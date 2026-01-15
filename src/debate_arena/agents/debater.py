@@ -1,9 +1,7 @@
-from typing import List, Dict, Any
+from typing import List
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, trim_messages
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 
 class DebateAgent:
     def __init__(self, name: str, model_name: str, temperature: float, system_prompt: str):
