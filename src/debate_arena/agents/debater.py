@@ -1,6 +1,6 @@
 from typing import List
 from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, trim_messages
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 
 class DebateAgent:
@@ -25,20 +25,6 @@ class DebateAgent:
         # Add system prompt to memory initially
         self.memory.add_message(SystemMessage(content=system_prompt))
 
-    def _trim_history(self, messages: List[BaseMessage]) -> List[BaseMessage]:
-        """
-        Trim messages to keep within context window using langchain's trim_messages.
-        We'll keep the last 10 messages for now as a heuristic, or use token counting if configured.
-        """
-        return trim_messages(
-            messages,
-            token_counter=len, # Simple heuristic for now, assuming list length
-            max_tokens=20, # Keep last ~20 messages
-            strategy="last",
-            start_on="human",
-            allow_partial=False,
-        )
-
     def run(self, opponent_message: str) -> str:
         """
         Generate a response to the opponent's argument.
@@ -54,11 +40,6 @@ class DebateAgent:
         
         # Get messages from memory
         messages = self.memory.messages
-        # Note: In a real constrained env, we would apply _trim_history(messages) here
-        # passing the trimmed messages to invoke.
-        
-        # Basic Anti-Loop Check (simple repetition detection)
-        # (This is a placeholder for more advanced logic)
         
         try:
             response = self.llm.invoke(messages)
