@@ -34,7 +34,9 @@ async function loadExample(key) {
         const res = await fetch(spec.file, { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
-        outputEl.textContent = text.trimEnd();
+
+        const normalized = text.replace(/\r\n/g, "\n").trimEnd();
+        outputEl.textContent = normalized;
     } catch (err) {
         outputEl.textContent = `Failed to load ${spec.file}.\n\n${String(err)}`;
     }

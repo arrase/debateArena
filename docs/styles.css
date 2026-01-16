@@ -319,36 +319,6 @@ pre code {
     overflow-wrap: anywhere;
     word-break: break-word;
 }
-
-.example-output-md {
-    background: #141414;
-    padding: 20px 24px 20px 28px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-    color: #f8f8f2;
-}
-
-.example-output-md :is(h1,h2,h3,h4) {
-    color: #fff;
-    margin: 14px 0 10px;
-}
-
-.example-output-md p {
-    margin: 10px 0;
-}
-
-.example-output-md code {
-    background: rgba(255,255,255,0.08);
-    color: var(--accent-color);
-}
-
-.example-output-md pre {
-    background: rgba(0,0,0,0.25);
-    border: 1px solid rgba(255,255,255,0.08);
-}
-
 .example-panel a {
     color: var(--secondary-color);
     text-decoration: none;
@@ -356,6 +326,12 @@ pre code {
 
 .example-panel a:hover {
     color: var(--primary-color);
+}
+
+/* Plain-text examples: wrap + a bit more left padding */
+#example-output-raw {
+    padding-left: 28px;
+    overflow-x: hidden;
 }
 
 /* Footer */
