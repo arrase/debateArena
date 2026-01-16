@@ -60,7 +60,8 @@ class DebateManager:
         judge_prompt = (
             "Analiza el siguiente tramo de debate y decide si ya existe acuerdo o un vencedor claro. "
             "Responde SOLO con un JSON válido en una sola línea con las claves: "
-            "decision (continue|end), winner (debater_a|debater_b|draw), reason.\n\n"
+            "decision (continue|end), winner (debater_a|debater_b|draw), reason. "
+            f"La clave 'reason' debe estar en {self.language}.\n\n"
             f"Tema: {self.topic}\n\n"
             f"Transcripción:\n{transcript}\n"
         )

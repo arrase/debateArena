@@ -50,6 +50,7 @@ models:
       decision: "continue" or "end"
       winner: "debater_a", "debater_b", or "draw"
       reason: short explanation
+      You **MUST** write the JSON value for reason in {language}.
       Never add extra text outside the JSON.
 
 context:
