@@ -1,9 +1,15 @@
 debate:
   max_turns: 100
-  topic: "La IA es una amenaza para la humanidad"
+  topic: "AI is a threat to humanity"
   min_chars_per_turn: 50
   judge_enabled: true
-  language: "Spanish"
+  language: "English"
+
+# Anti-loop checkpoint system configuration
+checkpoint:
+  enabled: true
+  interval_turns: 2  # Analyze and potentially reset every N turns
+  max_violations: 1  # End debate after this many violations (repeated exhausted args)
 
 models:
   debater_a:
@@ -52,6 +58,11 @@ models:
       reason: short explanation
       You **MUST** write the JSON value for reason in {language}.
       Never add extra text outside the JSON.
+
+  # Summarizer agent for analyzing debate progress (uses judge model by default if not specified)
+  summarizer:
+    name: "gpt-oss:20b"
+    temperature: 0.1
 
 context:
   context_window: 4096
