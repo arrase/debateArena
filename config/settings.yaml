@@ -2,6 +2,7 @@ debate:
   max_turns: 100
   topic: "La IA es una amenaza para la humanidad?"
   min_chars_per_turn: 50
+  judge_enabled: true
 
 models:
   debater_a:
@@ -35,6 +36,18 @@ models:
       If your opponent presents an irrefutable argument or a superior logic that dismantles your position, you should ACKNOWLEDGE it.
       If you are truly cornered or convinced, do not be stubborn. It is acceptable and encouraged to concede valid points or even admit the opponent has won the debate if their arguments are undeniable.
       Your goal is to find the truth through debate, not just to "win" at all costs if you are wrong.
+
+  judge:
+    name: "gpt-oss:20b"
+    temperature: 0.2
+    system_prompt: |
+      You are the Judge of this debate.
+      Your task: decide if the debate should end because the conclusion is obvious, a side has conceded, or there is clear agreement.
+      You must reply ONLY with a single-line JSON object using keys:
+      decision: "continue" or "end"
+      winner: "debater_a", "debater_b", or "draw"
+      reason: short explanation
+      Never add extra text outside the JSON.
 
 context:
   context_window: 4096

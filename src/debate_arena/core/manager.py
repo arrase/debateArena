@@ -1,4 +1,5 @@
 import time
+import json
 from typing import Dict, Any, Optional
 from debate_arena.agents.debater import DebateAgent
 
@@ -12,6 +13,11 @@ class DebateManager:
         self.history = []
         self.agent_a = self._create_agent('debater_a', config['models']['debater_a'])
         self.agent_b = self._create_agent('debater_b', config['models']['debater_b'])
+        self.judge = None
+        judge_config = config.get('models', {}).get('judge')
+        self.judge_enabled = config.get('debate', {}).get('judge_enabled', False)
+        if self.judge_enabled and judge_config:
+            self.judge = self._create_agent('judge', judge_config)
         
     def _create_agent(self, key: str, model_config: Dict[str, Any]) -> DebateAgent:
         system_prompt = model_config['system_prompt'].format(topic=self.topic)
@@ -31,6 +37,37 @@ class DebateManager:
                     f.write(message + "\n")
             except Exception as e:
                 print(f"[Warning] Failed to write to file: {e}")
+
+    def _record_verdict(self, verdict: Dict[str, Any]):
+        """Record judge verdict in transcript and history."""
+        winner = verdict.get("winner", "draw")
+        reason = verdict.get("reason", "")
+        verdict_line = f"[Judge verdict] decision=end winner={winner} reason={reason}"
+        self.history.append(("Judge", verdict_line))
+        self._log(verdict_line)
+
+    def _evaluate_with_judge(self) -> Optional[Dict[str, Any]]:
+        """Ask the judge to decide if the debate should end."""
+        if not self.judge:
+            return None
+
+        transcript_lines = []
+        for speaker, content in self.history[-10:]:
+            transcript_lines.append(f"{speaker}: {content}")
+        transcript = "\n".join(transcript_lines)
+
+        judge_prompt = (
+            "Analiza el siguiente tramo de debate y decide si ya existe acuerdo o un vencedor claro. "
+            "Responde SOLO con un JSON válido en una sola línea con las claves: "
+            "decision (continue|end), winner (debater_a|debater_b|draw), reason.\n\n"
+            f"Tema: {self.topic}\n\n"
+            f"Transcripción:\n{transcript}\n"
+        )
+        response = self.judge.run(judge_prompt)
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            return None
 
     def run_debate(self):
         """Execute the debate loop."""
@@ -60,6 +97,15 @@ class DebateManager:
             self._log(f"{self.agent_b.name}: {response_b}")
             self.history.append((self.agent_b.name, response_b))
             last_message = response_b
+
+            if self.judge_enabled:
+                verdict = self._evaluate_with_judge()
+                if verdict and verdict.get("decision") == "end":
+                    self._record_verdict(verdict)
+                    winner = verdict.get("winner", "draw")
+                    reason = verdict.get("reason", "")
+                    self._log(f"\n[Early finish] Judge ended debate. Winner: {winner}. {reason}")
+                    break
 
             turn += 1
 
