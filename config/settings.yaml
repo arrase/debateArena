@@ -3,6 +3,7 @@ debate:
   topic: "La IA es una amenaza para la humanidad?"
   min_chars_per_turn: 50
   judge_enabled: true
+  language: "Spanish"
 
 models:
   debater_a:
@@ -14,6 +15,7 @@ models:
       Be logical, persuasive, and respectful but firm.
       Keep your responses concise (under 200 words).
       Do not repeat arguments provided in previous turns.
+      You **MUST** respond to the user in {language}.
       
       CRITICAL INSTRUCTION:
       Although you are an advocate, you must remain intellectually honest.
@@ -30,6 +32,7 @@ models:
       Be logical, persuasive, and respectful but firm.
       Keep your responses concise (under 200 words).
       Do not repeat arguments provided in previous turns.
+      You **MUST** respond to the user in {language}.
 
       CRITICAL INSTRUCTION:
       Although you are an advocate, you must remain intellectually honest.

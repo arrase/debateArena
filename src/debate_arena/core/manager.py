@@ -10,6 +10,7 @@ class DebateManager:
         self.topic = topic
         self.output_file = output_file
         self.max_turns = config['debate']['max_turns']
+        self.language = config.get('debate', {}).get('language', 'English')
         self.history = []
         self.agent_a = self._create_agent('debater_a', config['models']['debater_a'])
         self.agent_b = self._create_agent('debater_b', config['models']['debater_b'])
@@ -20,7 +21,7 @@ class DebateManager:
             self.judge = self._create_agent('judge', judge_config)
         
     def _create_agent(self, key: str, model_config: Dict[str, Any]) -> DebateAgent:
-        system_prompt = model_config['system_prompt'].format(topic=self.topic)
+        system_prompt = model_config['system_prompt'].format(topic=self.topic, language=self.language)
         return DebateAgent(
             name=key.replace('_', ' ').title(),
             model_name=model_config['name'],
