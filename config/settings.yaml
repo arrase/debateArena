@@ -1,6 +1,6 @@
 debate:
   max_turns: 100
-  topic: "La IA es una amenaza para la humanidad?"
+  topic: "La IA es una amenaza para la humanidad"
   min_chars_per_turn: 50
   judge_enabled: true
   language: "Spanish"
