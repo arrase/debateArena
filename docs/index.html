@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debate Arena</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <nav>
+                <a href="#" class="logo">Debate<span>Arena</span></a>
+                <ul class="nav-links">
+                    <li><a href="https://github.com/arrase/debateArena" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> Repository</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hero">
+        <div class="container">
+            <h1>Autonomous, turn-based debates.</h1>
+            <p>Two LLM agents debate PRO vs CON, with an anti-loop mechanism (checkpoint summarization + restriction injection) to keep long debates coherent.</p>
+            <div class="hero-buttons">
+                <a class="cta-button" href="#examples">See examples</a>
+                <a class="secondary-button" href="#run">How to run</a>
+            </div>
+        </div>
+    </div>
+
+    <section id="overview">
+        <div class="container">
+            <h2>Overview</h2>
+            <div class="features-grid">
+                <div class="feature-card card-static">
+                    <i class="fas fa-people-arrows feature-icon"></i>
+                    <h3>Two debaters</h3>
+                    <p>PRO and CON agents debate a topic over many turns using LangChain + Ollama-compatible models.</p>
+                </div>
+                <div class="feature-card card-static">
+                    <i class="fas fa-rotate feature-icon"></i>
+                    <h3>Anti-loop checkpoints</h3>
+                    <p>A summarizer analyzes the transcript periodically, detects repetition/refutations, and injects new restrictions into the debaters’ prompts.</p>
+                </div>
+                <div class="feature-card card-static">
+                    <i class="fas fa-gavel feature-icon"></i>
+                    <h3>Optional judge</h3>
+                    <p>A judge can end the debate early when there’s agreement, a clear winner, or too many rule violations.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="run">
+        <div class="container">
+            <h2>Run it</h2>
+
+            <div class="arch-container">
+                <div class="command-group">
+                    <div class="command-title">1) Configure</div>
+                    <p class="muted">Edit <code>config/settings.yaml</code> to set the topic, max turns, checkpoint interval, and model names.</p>
+                </div>
+
+                <div class="command-group">
+                    <div class="command-title">2) Install + run</div>
+                    <pre><code>python3 -m venv .venv
+source .venv/bin/activate
+pip3 install -e .
+debate-cli --config config/settings.yaml</code></pre>
+                </div>
+
+                <div class="command-group">
+                    <div class="command-title">3) Optional flags</div>
+                    <pre><code>debate-cli --config config/settings.yaml -p "2+2=5"
+debate-cli --config config/settings.yaml -f transcript.txt</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="examples">
+        <div class="container">
+            <h2>Examples</h2>
+            <p class="muted center">These are real CLI outputs from the project’s <code>docs/</code> folder.</p>
+
+            <div class="example-tabs" role="tablist" aria-label="Example outputs">
+                <button class="tab-button active" type="button" data-example="225" role="tab" aria-selected="true">2+2=5</button>
+                <button class="tab-button" type="button" data-example="ai-threat" role="tab" aria-selected="false">AI threat</button>
+            </div>
+
+            <div class="example-panel" role="tabpanel">
+                <div class="example-meta">
+                    <span class="pill"><i class="fas fa-terminal"></i> CLI transcript</span>
+                    <span class="pill" id="example-source">Source: <code>225.txt</code></span>
+                </div>
+                <pre><code id="example-output" class="example-output">Loading…</code></pre>
+                <p class="muted small">Tip: you can open the raw file too: <a id="raw-link" href="225.txt">225.txt</a></p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Arrase. All rights reserved.</p>
+            <p>
+                <a href="https://github.com/arrase" target="_blank" rel="noopener noreferrer">GitHub</a>
+                &middot;
+                <a href="https://github.com/arrase/debateArena" target="_blank" rel="noopener noreferrer">debateArena repo</a>
+            </p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
