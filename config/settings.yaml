@@ -1,7 +1,6 @@
 debate:
   max_turns: 100
   topic: "La tierra es plana"
-  min_chars_per_turn: 50
   language: "Spanish"  # Language for all agent responses
 
 # Anti-loop checkpoint system configuration
