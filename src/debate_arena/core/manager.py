@@ -180,8 +180,17 @@ class DebateManager:
         if new_restrictions != self.current_restrictions:
             self.current_restrictions = new_restrictions
             
-            # Get last exchange for continuity
-            last_message = self.history[-1][1] if self.history else None
+            # Get last exchanges for continuity - each debater needs their OPPONENT's last message
+            # History format: [(speaker, message), ...] alternating A, B, A, B...
+            last_message_from_a = None
+            last_message_from_b = None
+            for speaker, message in reversed(self.history):
+                if last_message_from_a is None and "Debater A" in speaker:
+                    last_message_from_a = message
+                if last_message_from_b is None and "Debater B" in speaker:
+                    last_message_from_b = message
+                if last_message_from_a and last_message_from_b:
+                    break
             
             # Generate context summaries with role clarity for each debater
             context_summary_a = self._generate_context_summary(
@@ -198,16 +207,17 @@ class DebateManager:
             )
             
             # Reset both agents with new restrictions and their respective position context
+            # CRITICAL: Each debater receives their OPPONENT's last message, not their own
             self._log("[Checkpoint] Updating debater prompts with new restrictions...")
             self.agent_a.reset_with_restrictions(
                 restrictions=new_restrictions,
                 context_summary=context_summary_a,
-                last_exchange=last_message
+                last_exchange=last_message_from_b  # A receives B's last message
             )
             self.agent_b.reset_with_restrictions(
                 restrictions=new_restrictions,
                 context_summary=context_summary_b,
-                last_exchange=last_message
+                last_exchange=last_message_from_a  # B receives A's last message
             )
             
             self._log(f"[Checkpoint] Exhausted arguments: {len(summary.exhausted_arguments)}")
