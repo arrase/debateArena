@@ -180,23 +180,30 @@ class DebateManager:
         if new_restrictions != self.current_restrictions:
             self.current_restrictions = new_restrictions
             
-            # Generate context summary for continuity
-            context_summary = self._generate_context_summary(summary)
-            
             # Get last exchange for continuity
             last_message = self.history[-1][1] if self.history else None
             
-            # Reset both agents with new restrictions
+            # Generate context summaries with position reinforcement for each debater
+            context_summary_a = self._generate_context_summary(
+                summary, 
+                debater_position=f"PRO - You are defending that '{self.topic}' is TRUE"
+            )
+            context_summary_b = self._generate_context_summary(
+                summary,
+                debater_position=f"CON - You are arguing AGAINST the statement '{self.topic}'"
+            )
+            
+            # Reset both agents with new restrictions and their respective position context
             self._log("[Checkpoint] Updating debater prompts with new restrictions...")
             self.agent_a.reset_with_restrictions(
                 restrictions=new_restrictions,
-                context_summary=context_summary,
-                last_exchange=last_message
+                context_summary=context_summary_a,
+                last_exchange=f"[You are Debater A - PRO position] {last_message}" if last_message else None
             )
             self.agent_b.reset_with_restrictions(
                 restrictions=new_restrictions,
-                context_summary=context_summary,
-                last_exchange=last_message
+                context_summary=context_summary_b,
+                last_exchange=f"[You are Debater B - CON position] {last_message}" if last_message else None
             )
             
             self._log(f"[Checkpoint] Exhausted arguments: {len(summary.exhausted_arguments)}")
@@ -236,9 +243,20 @@ class DebateManager:
         self._log("[Checkpoint] Debate continues with updated restrictions.")
         return False, None
     
-    def _generate_context_summary(self, summary: DebateSummary) -> str:
-        """Generate a brief context summary for debater continuity."""
+    def _generate_context_summary(self, summary: DebateSummary, debater_position: str = "") -> str:
+        """Generate a brief context summary for debater continuity.
+        
+        Args:
+            summary: The debate summary containing key points and focus
+            debater_position: The position this debater is defending (PRO or CON)
+        """
         parts = []
+        
+        # CRITICAL: Include the debater's assigned position to prevent role confusion
+        if debater_position:
+            parts.append(f"YOUR ASSIGNED POSITION: {debater_position}")
+            parts.append("You MUST continue defending this position throughout the debate.")
+            parts.append("")
         
         if summary.current_focus:
             parts.append(f"Current focus: {summary.current_focus}")
