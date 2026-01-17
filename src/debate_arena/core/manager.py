@@ -24,12 +24,11 @@ class DebateManager:
         self.agent_a = self._create_agent('debater_a', config['models']['debater_a'])
         self.agent_b = self._create_agent('debater_b', config['models']['debater_b'])
         
-        # Create judge if enabled
-        self.judge = None
-        judge_config = config.get('models', {}).get('judge')
-        self.judge_enabled = config.get('debate', {}).get('judge_enabled', False)
-        if self.judge_enabled and judge_config:
-            self.judge = self._create_agent('judge', judge_config)
+        # Create judge (always enabled)
+        judge_config = config['models']['judge']
+        self.judge = self._create_agent('judge', judge_config)
+        self.judge_evaluation_prompt = judge_config.get('evaluation_prompt', '')
+        self.judge_forced_verdict_prompt = judge_config.get('forced_verdict_prompt', '')
         
         # Create summarizer for anti-loop mechanism
         self.summarizer: Optional[SummarizerAgent] = None
@@ -77,8 +76,19 @@ class DebateManager:
         self.history.append(("Judge", verdict_line))
         self._log(verdict_line)
 
-    def _evaluate_with_judge(self, force_verdict: bool = False) -> Optional[Dict[str, Any]]:
-        """Ask the judge to decide if the debate should end."""
+    def _evaluate_with_judge(self, force_verdict: bool = False, exhausted_args_reason: str = "") -> Optional[Dict[str, Any]]:
+        """
+        Ask the judge to evaluate the debate state.
+        
+        The judge checks for:
+        1. Agreement between debaters
+        2. One debater completely refuting all of the opponent's arguments
+        3. Forced verdict due to argument exhaustion
+        
+        Args:
+            force_verdict: If True, judge must provide final verdict
+            exhausted_args_reason: Reason for termination due to exhausted arguments
+        """
         if not self.judge:
             return None
 
@@ -88,24 +98,18 @@ class DebateManager:
         transcript = "\n".join(transcript_lines)
 
         if force_verdict:
-            judge_prompt = (
-                "The debate has been terminated due to rule violations or excessive repetition. "
-                "You must provide a final verdict NOW. "
-                "Respond ONLY with a valid JSON on a single line with the keys: "
-                "decision (must be 'end'), winner (debater_a|debater_b|draw), reason. "
-                f"The 'reason' key must be in {self.language}.\n\n"
-                f"Termination reason: {self.end_reason}\n\n"
-                f"Topic: {self.topic}\n\n"
-                f"Transcript:\n{transcript}\n"
+            termination_reason = exhausted_args_reason or self.end_reason
+            judge_prompt = self.judge_forced_verdict_prompt.format(
+                termination_reason=termination_reason,
+                topic=self.topic,
+                transcript=transcript,
+                language=self.language
             )
         else:
-            judge_prompt = (
-                "Analyze the following segment of the debate and decide whether there is already agreement or a clear winner. "
-                "Respond ONLY with a valid JSON on a single line with the keys: "
-                "decision (continue|end), winner (debater_a|debater_b|draw), reason. "
-                f"The 'reason' key must be in {self.language}.\n\n"
-                f"Topic: {self.topic}\n\n"
-                f"Transcript:\n{transcript}\n"
+            judge_prompt = self.judge_evaluation_prompt.format(
+                topic=self.topic,
+                transcript=transcript,
+                language=self.language
             )
         
         response = self.judge.run(judge_prompt)
@@ -121,32 +125,44 @@ class DebateManager:
                 except json.JSONDecodeError:
                     pass
             if force_verdict:
-                return {"decision": "end", "winner": "draw", "reason": self.end_reason}
+                return {"decision": "end", "winner": "draw", "reason": exhausted_args_reason or self.end_reason}
             return None
 
     def _perform_checkpoint(self, turn: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
-        Perform a checkpoint: analyze debate, update restrictions, reset agents if needed.
+        Perform a checkpoint with the following sequence:
         
-        This is the core anti-loop mechanism. Every N turns, we:
-        1. Have the summarizer analyze the conversation
-        2. Generate restrictions for exhausted arguments
-        3. Reset debater agents with new prompts containing restrictions
-        4. Check if debate should end due to violations
-        5. Evaluate with judge if debate should conclude
+        1. JUDGE EVALUATION: Check if there's agreement or total refutation
+           - If one debater has irrefutably defeated all opponent's arguments -> END
+           - If both debaters have reached consensus -> END
+           
+        2. SUMMARIZER ANALYSIS: If debate continues, analyze conversation
+           - Generate list of exhausted arguments (no more room to develop)
+           - Instruct debaters to use different argumentative lines
+           - If no new arguments possible -> END without consensus
         
         Returns:
             Tuple[bool, Optional[Dict]]: (should_end, judge_verdict if any)
         """
+        self._log(f"\n[Checkpoint at turn {turn}]")
+        
+        # =====================================================
+        # STEP 1: JUDGE EVALUATION - Check for agreement/refutation
+        # =====================================================
+        self._log("[Checkpoint] Judge evaluating for agreement or total refutation...")
+        verdict = self._evaluate_with_judge()
+        if verdict and verdict.get("decision") == "end":
+            self._log(f"[Checkpoint] Judge determined debate should end: {verdict.get('reason', '')}")
+            return True, verdict
+        self._log("[Checkpoint] Judge: Debate should continue, no clear winner yet.")
+        
+        # =====================================================
+        # STEP 2: SUMMARIZER - Analyze and restrict exhausted arguments
+        # =====================================================
         if not self.summarizer:
-            # Even without summarizer, evaluate with judge at checkpoint intervals
-            if self.judge_enabled:
-                verdict = self._evaluate_with_judge()
-                if verdict and verdict.get("decision") == "end":
-                    return True, verdict
             return False, None
         
-        self._log(f"\n[Checkpoint at turn {turn}] Analyzing debate progress...")
+        self._log("[Checkpoint] Analyzing debate progress and exhausted arguments...")
         
         # Get recent history for analysis (since last checkpoint)
         history_slice = self.history[-(self.checkpoint_interval * 2 + 2):]
@@ -186,36 +202,38 @@ class DebateManager:
             self._log(f"[Checkpoint] Exhausted arguments: {len(summary.exhausted_arguments)}")
             self._log(f"[Checkpoint] Total violations detected: {summary.total_violations}")
         
-        # Check if we should force end based on summarizer analysis
+        # =====================================================
+        # STEP 3: CHECK FOR TERMINATION CONDITIONS
+        # =====================================================
+        
+        # Check if summarizer detected debate should end (argument exhaustion detected by LLM)
         if should_end:
             self.forced_end = True
-            self.end_reason = end_reason or "Debate terminated due to argument exhaustion"
-            self._log(f"\n[Checkpoint] Debate should end: {self.end_reason}")
-            # Get forced verdict from judge
-            if self.judge_enabled:
-                verdict = self._evaluate_with_judge(force_verdict=True)
-                return True, verdict
-            return True, None
+            self.end_reason = end_reason or "Debate terminated: all argumentative lines have been exhausted"
+            self._log(f"\n[Checkpoint] {self.end_reason}")
+            verdict = self._evaluate_with_judge(
+                force_verdict=True, 
+                exhausted_args_reason="Debate ended without consensus - no new arguments available"
+            )
+            return True, verdict
         
+        # Check for rule violations (debaters repeating exhausted arguments)
         if summary.total_violations >= self.max_violations:
             self.forced_end = True
-            self.end_reason = f"Debate terminated: {summary.total_violations} rule violations (repeated exhausted arguments)"
+            exhausted_list = ", ".join(summary.exhausted_arguments[:5]) if summary.exhausted_arguments else "multiple arguments"
+            self.end_reason = (
+                f"Debate terminated without consensus: {summary.total_violations} violations detected. "
+                f"Debaters failed to present new arguments after exhausting: {exhausted_list}"
+            )
             self._log(f"\n[Checkpoint] {self.end_reason}")
-            # Get forced verdict from judge
-            if self.judge_enabled:
-                verdict = self._evaluate_with_judge(force_verdict=True)
-                return True, verdict
-            return True, None
+            verdict = self._evaluate_with_judge(
+                force_verdict=True,
+                exhausted_args_reason=self.end_reason
+            )
+            return True, verdict
         
         self.last_checkpoint_turn = turn
-        
-        # Evaluate with judge at each checkpoint (not every turn)
-        if self.judge_enabled:
-            self._log(f"\n[Checkpoint] Evaluating with judge...")
-            verdict = self._evaluate_with_judge()
-            if verdict and verdict.get("decision") == "end":
-                return True, verdict
-        
+        self._log("[Checkpoint] Debate continues with updated restrictions.")
         return False, None
     
     def _generate_context_summary(self, summary: DebateSummary) -> str:

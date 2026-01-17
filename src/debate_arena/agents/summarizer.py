@@ -40,38 +40,48 @@ class DebateSummary:
         lines = []
         
         if self.exhausted_arguments:
-            lines.append("FORBIDDEN ARGUMENT LINES (already exhausted):")
+            lines.append("🚫 EXHAUSTED ARGUMENTS (no longer have any room for development):")
             for arg in self.exhausted_arguments:
-                lines.append(f"  - {arg}")
+                lines.append(f"   • {arg}")
         
         if self.refuted_arguments:
-            lines.append("\nREFUTED ARGUMENTS (do not use these):")
+            lines.append("\n❌ REFUTED ARGUMENTS (completely dismantled - do not use):")
             for debater, args in self.refuted_arguments.items():
                 if args:
-                    lines.append(f"  {debater}:")
+                    lines.append(f"   {debater}:")
                     for arg in args:
-                        lines.append(f"    - {arg}")
+                        lines.append(f"      • {arg}")
         
         if self.stalemate_topics:
-            lines.append("\nSTALEMATE TOPICS (both sides failed to make progress):")
+            lines.append("\n⚠️ STALEMATE TOPICS (no progress possible on these):")
             for topic in self.stalemate_topics:
-                lines.append(f"  - {topic}")
+                lines.append(f"   • {topic}")
         
         if self.key_points:
-            lines.append("\nDEBATE SUMMARY SO FAR:")
+            lines.append("\n📋 DEBATE PROGRESS SUMMARY:")
             for point in self.key_points:
-                lines.append(f"  - {point}")
+                lines.append(f"   • {point}")
         
         if lines:
             restriction = "\n".join(lines)
             return f"""
-=== DEBATE PROGRESS RESTRICTIONS ===
+╔══════════════════════════════════════════════════════════════╗
+║           ⚠️  MANDATORY DEBATE RESTRICTIONS  ⚠️               ║
+╚══════════════════════════════════════════════════════════════╝
+
 {restriction}
 
-CRITICAL: You MUST NOT repeat any exhausted, refuted, or stalemate arguments.
-You must bring NEW perspectives or evidence. If you have no new arguments,
-acknowledge it honestly.
-=================================
+┌──────────────────────────────────────────────────────────────┐
+│ CRITICAL INSTRUCTIONS:                                        │
+│                                                                │
+│ 1. You MUST NOT repeat any argument listed above              │
+│ 2. You MUST use DIFFERENT argumentative lines                 │
+│ 3. Bring NEW perspectives, evidence, or angles                │
+│ 4. If you have no new arguments, you MUST acknowledge this    │
+│    honestly and the debate will end without consensus         │
+│                                                                │
+│ FAILURE TO COMPLY will terminate the debate immediately.      │
+└──────────────────────────────────────────────────────────────┘
 """
         return ""
 
@@ -79,13 +89,21 @@ acknowledge it honestly.
 class SummarizerAgent:
     """Agent responsible for summarizing debate progress and tracking argument exhaustion."""
     
-    ANALYSIS_PROMPT = """You are a debate analyst. Analyze the following debate transcript and provide a structured JSON analysis.
+    ANALYSIS_PROMPT = """You are an expert debate analyst. Your role is to track argument exhaustion and prevent repetitive debates.
 
-Your task:
-1. Identify ALL distinct arguments made by each debater
-2. Determine which arguments have been REFUTED (opponent provided irrefutable counter-evidence)
-3. Identify STALEMATES (same argument repeated 2+ times without progress)
-4. Detect if any debater is repeating previously refuted arguments (violation)
+ANALYZE the transcript and identify:
+
+1. EXHAUSTED ARGUMENTS: Arguments that have no more room for development because:
+   - They have been fully explored from all angles
+   - They have been refuted with no valid counter-response
+   - They keep being repeated without new evidence
+   - Both sides have said everything possible about them
+
+2. REFUTED ARGUMENTS: Arguments that have been completely dismantled by the opponent with irrefutable logic or evidence
+
+3. STALEMATES: Topics where both debaters are going in circles without progress
+
+4. VIOLATIONS: When a debater repeats an argument that was already exhausted/refuted
 
 Respond with ONLY a valid JSON object (no markdown, no extra text):
 {{
@@ -96,7 +114,7 @@ Respond with ONLY a valid JSON object (no markdown, no extra text):
         "debater_b": ["refuted arg by B"]
     }},
     "stalemate_topics": ["topic stuck in loop"],
-    "exhausted_lines": ["argument lines that should not be used anymore"],
+    "exhausted_lines": ["argument lines that have no more development possible"],
     "key_points": ["important developments in the debate"],
     "violations_detected": 0,
     "current_focus": "what the debate is currently about",
@@ -104,13 +122,14 @@ Respond with ONLY a valid JSON object (no markdown, no extra text):
     "end_reason": ""
 }}
 
-IMPORTANT:
+CRITICAL GUIDELINES:
 - Be concise in argument descriptions (max 15 words each)
-- "refuted" means the opponent provided evidence/logic that completely dismantles the argument
-- "stalemate" means the same point was argued back and forth without new evidence
-- "violations_detected" = number of times a debater repeated a previously exhausted argument
-- "should_end" = true if debate has devolved into pure repetition or one side has clearly won
-- Write descriptions in {language}
+- "exhausted_lines" = arguments with NO MORE development possible (must use different angles)
+- "violations_detected" = count of times a debater repeated an exhausted/refuted argument
+- "should_end" = true ONLY if BOTH debaters are stuck repeating without any new arguments possible
+- Write ALL descriptions in {language}
+
+{previous_restrictions_block}
 
 Topic: {topic}
 
@@ -144,13 +163,20 @@ Transcript:
         """
         transcript_text = self._format_transcript(transcript)
         
+        # Build the previous restrictions block for context
+        previous_restrictions_block = ""
         if previous_restrictions:
-            transcript_text = f"[Previous restrictions given to debaters:\n{previous_restrictions}]\n\n{transcript_text}"
+            previous_restrictions_block = (
+                "PREVIOUSLY RESTRICTED ARGUMENTS (debaters were told NOT to use these):\n"
+                f"{previous_restrictions}\n\n"
+                "If a debater uses any of these restricted arguments again, count it as a VIOLATION."
+            )
         
         prompt = self.ANALYSIS_PROMPT.format(
             topic=topic,
             transcript=transcript_text,
-            language=self.language
+            language=self.language,
+            previous_restrictions_block=previous_restrictions_block
         )
         
         messages = [
