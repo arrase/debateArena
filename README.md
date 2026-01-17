@@ -201,43 +201,6 @@ models:
 
 ---
 
-## Technical Details
-
-### Anti-Loop Mechanism
-
-The core innovation is the **restriction injection system**:
-
-1. After N turns, the `SummarizerAgent` analyzes the transcript
-2. It identifies exhausted/repeated argument lines
-3. Generates restriction text that forbids these arguments
-4. Both debaters are **reset** with updated system prompts containing:
-   - The original instructions
-   - A context summary of debate progress
-   - Explicit restrictions on exhausted arguments
-
-This allows limited-context models to maintain debate coherence over many turns.
-
-### Warning System
-
-Before terminating a debate due to argument exhaustion:
-
-1. **First violation**: Warning is issued with a summary of exhausted topics
-2. **Second violation**: Debate is terminated, judge delivers final verdict
-
----
-
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `langchain` | LLM orchestration framework |
-| `langchain-community` | Community integrations |
-| `langchain-ollama` | Ollama integration for local LLMs |
-| `PyYAML` | YAML configuration parsing |
-| `rich` | Beautiful terminal output and markdown rendering |
-
----
-
 ## Research Applications
 
 This experiment is designed to study:
