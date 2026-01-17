@@ -3,6 +3,8 @@ import json
 from typing import Dict, Any, Optional, List, Tuple
 from debate_arena.agents.debater import DebateAgent
 from debate_arena.agents.summarizer import SummarizerAgent, DebateSummary
+from rich.console import Console
+from rich.markdown import Markdown
 
 
 class DebateManager:
@@ -14,6 +16,7 @@ class DebateManager:
         self.max_turns = config['debate']['max_turns']
         self.language = config.get('debate', {}).get('language', 'English')
         self.history: List[Tuple[str, str]] = []
+        self.console = Console()
         
         # Checkpoint configuration
         checkpoint_config = config.get('checkpoint', {})
@@ -58,15 +61,19 @@ class DebateManager:
             system_prompt=system_prompt,
         )
 
-    def _log(self, message: str):
-        """Print message to stdout and optional file."""
-        print(message)
+    def _log_to_file(self, message: str):
+        """Append message to the output file if configured."""
         if self.output_file:
             try:
                 with open(self.output_file, 'a', encoding='utf-8') as f:
                     f.write(message + "\n")
             except Exception as e:
-                print(f"[Warning] Failed to write to file: {e}")
+                self.console.print(f"[bold red][Warning] Failed to write to file: {e}[/bold red]")
+
+    def _log(self, message: str):
+        """Print message to stdout and optional file."""
+        self.console.print(message)
+        self._log_to_file(message)
 
     def _record_verdict(self, verdict: Dict[str, Any]):
         """Record judge verdict in transcript and history."""
@@ -305,7 +312,7 @@ Your assigned stance: {stance}
                 with open(self.output_file, 'w', encoding='utf-8') as f:
                     f.write("")
             except Exception as e:
-                print(f"[Warning] Could not initialize output file: {e}")
+                self.console.print(f"[bold red][Warning] Could not initialize output file: {e}[/bold red]")
 
         self._log(f"\n=== STARTING DEBATE: {self.topic} ===\n")
         if self.summarizer_enabled:
@@ -317,17 +324,21 @@ Your assigned stance: {stance}
         while turn <= self.max_turns:
             self._log(f"\n--- Turn {turn}/{self.max_turns} ---")
 
-            print(f"\n[{self.agent_a.name} is thinking...]")
+            self.console.print(f"\n[yellow][{self.agent_a.name} is thinking...][/yellow]")
             response_a = self.agent_a.run(last_message)
-            self._log(f"{self.agent_a.name}: {response_a}")
+            self.console.print(f"[bold blue]{self.agent_a.name}:[/bold blue]")
+            self.console.print(Markdown(response_a))
+            self._log_to_file(f"{self.agent_a.name}: {response_a}")
             self.history.append((self.agent_a.name, response_a))
             last_message = response_a
 
             time.sleep(1)
 
-            print(f"\n[{self.agent_b.name} is thinking...]")
+            self.console.print(f"\n[yellow][{self.agent_b.name} is thinking...][/yellow]")
             response_b = self.agent_b.run(last_message)
-            self._log(f"{self.agent_b.name}: {response_b}")
+            self.console.print(f"[bold green]{self.agent_b.name}:[/bold green]")
+            self.console.print(Markdown(response_b))
+            self._log_to_file(f"{self.agent_b.name}: {response_b}")
             self.history.append((self.agent_b.name, response_b))
             last_message = response_b
 
