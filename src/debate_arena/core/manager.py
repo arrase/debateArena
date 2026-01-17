@@ -89,23 +89,23 @@ class DebateManager:
 
         if force_verdict:
             judge_prompt = (
-                "El debate ha sido terminado debido a violaciones de reglas o repetición excesiva. "
-                "Debes dar un veredicto final AHORA. "
-                "Responde SOLO con un JSON válido en una sola línea con las claves: "
-                "decision (debe ser 'end'), winner (debater_a|debater_b|draw), reason. "
-                f"La clave 'reason' debe estar en {self.language}.\n\n"
-                f"Razón de terminación: {self.end_reason}\n\n"
-                f"Tema: {self.topic}\n\n"
-                f"Transcripción:\n{transcript}\n"
+                "The debate has been terminated due to rule violations or excessive repetition. "
+                "You must provide a final verdict NOW. "
+                "Respond ONLY with a valid JSON on a single line with the keys: "
+                "decision (must be 'end'), winner (debater_a|debater_b|draw), reason. "
+                f"The 'reason' key must be in {self.language}.\n\n"
+                f"Termination reason: {self.end_reason}\n\n"
+                f"Topic: {self.topic}\n\n"
+                f"Transcript:\n{transcript}\n"
             )
         else:
             judge_prompt = (
-                "Analiza el siguiente tramo de debate y decide si ya existe acuerdo o un vencedor claro. "
-                "Responde SOLO con un JSON válido en una sola línea con las claves: "
+                "Analyze the following segment of the debate and decide whether there is already agreement or a clear winner. "
+                "Respond ONLY with a valid JSON on a single line with the keys: "
                 "decision (continue|end), winner (debater_a|debater_b|draw), reason. "
-                f"La clave 'reason' debe estar en {self.language}.\n\n"
-                f"Tema: {self.topic}\n\n"
-                f"Transcripción:\n{transcript}\n"
+                f"The 'reason' key must be in {self.language}.\n\n"
+                f"Topic: {self.topic}\n\n"
+                f"Transcript:\n{transcript}\n"
             )
         
         response = self.judge.run(judge_prompt)
