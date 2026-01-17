@@ -16,7 +16,6 @@ dependencies = [
     "langchain-community",
     "langchain-ollama",
     "PyYAML",
-    "rich",
 ]
 
 [project.scripts]

@@ -33,7 +33,6 @@ class DebateSummary:
     stalemate_topics: List[str] = field(default_factory=list)
     key_points: List[str] = field(default_factory=list)
     current_focus: str = ""
-    suggested_direction: str = ""  # New field for strategic guidance
     total_violations: int = 0
     
     def to_restriction_text(self, language: str = "Spanish") -> str:
@@ -57,10 +56,6 @@ class DebateSummary:
             lines.append("\n⚠️ STALEMATE TOPICS (no progress possible on these):")
             for topic in self.stalemate_topics:
                 lines.append(f"   • {topic}")
-        
-        if self.suggested_direction:
-            lines.append("\n🧭 STRATEGIC GUIDANCE (Where the debate should go next):")
-            lines.append(f"   {self.suggested_direction}")
         
         if self.key_points:
             lines.append("\n📋 DEBATE PROGRESS SUMMARY:")
@@ -123,7 +118,6 @@ Respond with ONLY a valid JSON object (no markdown, no extra text):
     "key_points": ["important developments in the debate"],
     "violations_detected": 0,
     "current_focus": "what the debate is currently about",
-    "suggested_direction": "strategic advice on the next best angle to explore to advance the debate",
     "should_end": false,
     "end_reason": ""
 }}
@@ -133,7 +127,6 @@ CRITICAL GUIDELINES:
 - "exhausted_lines" = arguments with NO MORE development possible (must use different angles)
 - "violations_detected" = count of times a debater repeated an exhausted/refuted argument
 - "should_end" = true ONLY if BOTH debaters are stuck repeating without any new arguments possible
-- "suggested_direction" = clear, actionable advice to both sides on what aspect to discuss next to break loops
 - Write ALL descriptions in {language}
 
 {previous_restrictions_block}
@@ -284,10 +277,6 @@ Transcript:
         # Update current focus
         if analysis.get("current_focus"):
             self.cumulative_summary.current_focus = analysis["current_focus"]
-            
-        # Update suggested direction
-        if analysis.get("suggested_direction"):
-            self.cumulative_summary.suggested_direction = analysis["suggested_direction"]
         
         # Accumulate violations
         self.cumulative_summary.total_violations += analysis.get("violations_detected", 0)
