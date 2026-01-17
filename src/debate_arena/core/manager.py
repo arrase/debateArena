@@ -124,7 +124,7 @@ class DebateManager:
                 return {"decision": "end", "winner": "draw", "reason": self.end_reason}
             return None
 
-    def _perform_checkpoint(self, turn: int) -> bool:
+    def _perform_checkpoint(self, turn: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
         Perform a checkpoint: analyze debate, update restrictions, reset agents if needed.
         
@@ -133,12 +133,18 @@ class DebateManager:
         2. Generate restrictions for exhausted arguments
         3. Reset debater agents with new prompts containing restrictions
         4. Check if debate should end due to violations
+        5. Evaluate with judge if debate should conclude
         
         Returns:
-            bool: True if debate should end, False otherwise
+            Tuple[bool, Optional[Dict]]: (should_end, judge_verdict if any)
         """
         if not self.summarizer:
-            return False
+            # Even without summarizer, evaluate with judge at checkpoint intervals
+            if self.judge_enabled:
+                verdict = self._evaluate_with_judge()
+                if verdict and verdict.get("decision") == "end":
+                    return True, verdict
+            return False, None
         
         self._log(f"\n[Checkpoint at turn {turn}] Analyzing debate progress...")
         
@@ -180,21 +186,37 @@ class DebateManager:
             self._log(f"[Checkpoint] Exhausted arguments: {len(summary.exhausted_arguments)}")
             self._log(f"[Checkpoint] Total violations detected: {summary.total_violations}")
         
-        # Check if we should force end
+        # Check if we should force end based on summarizer analysis
         if should_end:
             self.forced_end = True
             self.end_reason = end_reason or "Debate terminated due to argument exhaustion"
             self._log(f"\n[Checkpoint] Debate should end: {self.end_reason}")
-            return True
+            # Get forced verdict from judge
+            if self.judge_enabled:
+                verdict = self._evaluate_with_judge(force_verdict=True)
+                return True, verdict
+            return True, None
         
         if summary.total_violations >= self.max_violations:
             self.forced_end = True
             self.end_reason = f"Debate terminated: {summary.total_violations} rule violations (repeated exhausted arguments)"
             self._log(f"\n[Checkpoint] {self.end_reason}")
-            return True
+            # Get forced verdict from judge
+            if self.judge_enabled:
+                verdict = self._evaluate_with_judge(force_verdict=True)
+                return True, verdict
+            return True, None
         
         self.last_checkpoint_turn = turn
-        return False
+        
+        # Evaluate with judge at each checkpoint (not every turn)
+        if self.judge_enabled:
+            self._log(f"\n[Checkpoint] Evaluating with judge...")
+            verdict = self._evaluate_with_judge()
+            if verdict and verdict.get("decision") == "end":
+                return True, verdict
+        
+        return False, None
     
     def _generate_context_summary(self, summary: DebateSummary) -> str:
         """Generate a brief context summary for debater continuity."""
@@ -243,27 +265,18 @@ class DebateManager:
             self.history.append((self.agent_b.name, response_b))
             last_message = response_b
 
-            # Perform checkpoint if interval reached
-            if self.summarizer_enabled and turn > 0 and turn % self.checkpoint_interval == 0:
-                if self._perform_checkpoint(turn):
-                    # Force judge verdict
-                    if self.judge_enabled:
-                        verdict = self._evaluate_with_judge(force_verdict=True)
-                        if verdict:
-                            self._record_verdict(verdict)
-                            winner = verdict.get("winner", "draw")
-                            reason = verdict.get("reason", "")
+            # Perform checkpoint if interval reached (includes judge evaluation)
+            if turn > 0 and turn % self.checkpoint_interval == 0:
+                should_end, verdict = self._perform_checkpoint(turn)
+                if should_end:
+                    if verdict:
+                        self._record_verdict(verdict)
+                        winner = verdict.get("winner", "draw")
+                        reason = verdict.get("reason", "")
+                        if self.forced_end:
                             self._log(f"\n[Forced end] {reason}")
-                    break
-
-            # Regular judge evaluation
-            if self.judge_enabled:
-                verdict = self._evaluate_with_judge()
-                if verdict and verdict.get("decision") == "end":
-                    self._record_verdict(verdict)
-                    winner = verdict.get("winner", "draw")
-                    reason = verdict.get("reason", "")
-                    self._log(f"\n[Early finish] Judge ended debate. Winner: {winner}. {reason}")
+                        else:
+                            self._log(f"\n[Early finish] Judge ended debate. Winner: {winner}. {reason}")
                     break
 
             turn += 1
