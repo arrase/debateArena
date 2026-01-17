@@ -14,7 +14,11 @@
             <nav>
                 <a href="#" class="logo">Debate<span>Arena</span></a>
                 <ul class="nav-links">
-                    <li><a href="https://github.com/arrase/debateArena" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> Repository</a></li>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#how">How it works</a></li>
+                    <li><a href="#run">Usage</a></li>
+                    <li><a href="#examples">Examples</a></li>
+                    <li><a href="https://github.com/arrase/debateArena" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i> Repo</a></li>
                 </ul>
             </nav>
         </div>
@@ -22,8 +26,13 @@
 
     <div class="hero">
         <div class="container">
-            <h1>Autonomous, turn-based debates.</h1>
-            <p>Two LLM agents debate PRO vs CON, with an anti-loop mechanism (checkpoint summarization + restriction injection) to keep long debates coherent.</p>
+            <div class="badge-row">
+                <span class="badge"><i class="fas fa-robot"></i> LangChain + Ollama</span>
+                <span class="badge"><i class="fas fa-brain"></i> Autonomous debate</span>
+                <span class="badge"><i class="fas fa-file-alt"></i> Markdown output</span>
+            </div>
+            <h1>Autonomous, turn-based debates between two LLM agents.</h1>
+            <p>PRO vs CON with periodic analysis checkpoints and dynamic restrictions to prevent loops and keep long debates coherent.</p>
             <div class="hero-buttons">
                 <a class="cta-button" href="#examples">See examples</a>
                 <a class="secondary-button" href="#run">How to run</a>
@@ -38,44 +47,45 @@
                 <div class="feature-card card-static">
                     <i class="fas fa-people-arrows feature-icon"></i>
                     <h3>Two debaters</h3>
-                    <p>PRO and CON agents debate a topic over many turns using LangChain + Ollama-compatible models.</p>
+                    <p>PRO and CON agents debate a topic over many turns with Ollama-compatible models.</p>
                 </div>
                 <div class="feature-card card-static">
                     <i class="fas fa-rotate feature-icon"></i>
                     <h3>Anti-loop checkpoints</h3>
-                    <p>A summarizer analyzes the transcript periodically, detects repetition/refutations, and injects new restrictions into the debaters’ prompts.</p>
+                    <p>A summarizer analyzes the transcript periodically and injects restrictions to cut repetition and stalemates.</p>
                 </div>
                 <div class="feature-card card-static">
                     <i class="fas fa-gavel feature-icon"></i>
                     <h3>Judge</h3>
-                    <p>A judge can end the debate early when there’s agreement, a clear winner, or too many rule violations.</p>
+                    <p>Can end the debate early on agreement, total refutation, or clear concession.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="run">
+    <section id="how">
         <div class="container">
-            <h2>Run it</h2>
-
-            <div class="arch-container">
-                <div class="command-group">
-                    <div class="command-title">1) Configure</div>
-                    <p class="muted">Edit <code>config/settings.yaml</code> to set the topic, max turns, checkpoint interval, and model names.</p>
+            <h2>How it works</h2>
+            <div class="flow-grid">
+                <div class="flow-step">
+                    <span class="flow-num">1</span>
+                    <h3>Turn-based debate</h3>
+                    <p>PRO and CON alternate responses with controlled conversation memory.</p>
                 </div>
-
-                <div class="command-group">
-                    <div class="command-title">2) Install + run</div>
-                    <pre><code>python3 -m venv .venv
-source .venv/bin/activate
-pip3 install -e .
-debate-cli --config config/settings.yaml</code></pre>
+                <div class="flow-step">
+                    <span class="flow-num">2</span>
+                    <h3>Periodic analysis</h3>
+                    <p>The summarizer extracts arguments, refutations, and exhausted topics.</p>
                 </div>
-
-                <div class="command-group">
-                    <div class="command-title">3) Optional flags</div>
-                    <pre><code>debate-cli --config config/settings.yaml -p "2+2=5"
-debate-cli --config config/settings.yaml -f transcript.txt</code></pre>
+                <div class="flow-step">
+                    <span class="flow-num">3</span>
+                    <h3>Restriction injection</h3>
+                    <p>Prompts are updated to avoid repetitive lines and force novelty.</p>
+                </div>
+                <div class="flow-step">
+                    <span class="flow-num">4</span>
+                    <h3>Judge</h3>
+                    <p>Can end the debate when there is agreement or a clear winner.</p>
                 </div>
             </div>
         </div>
@@ -83,8 +93,8 @@ debate-cli --config config/settings.yaml -f transcript.txt</code></pre>
 
     <section id="examples">
         <div class="container">
-            <h2>Examples</h2>
-            <p class="muted center">These are real CLI outputs from the project’s <code>docs/</code> folder.</p>
+            <h2>Real examples</h2>
+            <p class="muted center">Real CLI outputs available in the <code>docs/</code> folder.</p>
 
             <div class="example-tabs" role="tablist" aria-label="Example outputs">
                 <button class="tab-button active" type="button" data-example="225" role="tab" aria-selected="true">2+2=5</button>

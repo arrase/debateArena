@@ -133,10 +133,10 @@ pip install -e .
 debate-cli --config config/settings.yaml
 
 # Override topic via CLI
-debate-cli -p "¿Es ético el uso de inteligencia artificial en la medicina?"
+debate-cli -p "Is the use of artificial intelligence in medicine ethical?"
 
 # Save transcript to file
-debate-cli -p "El cambio climático es reversible" -f debate_output.txt
+debate-cli -p "Climate change is reversible" -f debate_output.txt
 ```
 
 ### CLI Arguments
@@ -158,7 +158,7 @@ All settings are defined in `config/settings.yaml`:
 ```yaml
 debate:
   max_turns: 100              # Maximum number of debate turns
-  topic: "La tierra es plana" # Default debate topic
+  topic: "The Earth is flat"  # Default debate topic
   min_chars_per_turn: 50      # Minimum characters per response
   language: "Spanish"         # Response language
 ```
