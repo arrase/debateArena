@@ -1,84 +1,260 @@
 # Debate Arena
 
-Debate Arena is a small experiment that runs an autonomous, turn‑based debate between two large‑language‑model agents on a configurable topic. The project explores how to keep long debates coherent while avoiding repetitive argument loops by periodically summarizing progress and injecting restrictions back into the agents’ prompts.
+**Debate Arena** is an experimental autonomous CLI application that orchestrates turn-based debates between two large-language-model agents. Built with **LangChain** and **Ollama**, it explores mechanisms to keep long debates coherent while avoiding repetitive argument loops through periodic summarization and dynamic prompt injection.
 
-## What the experiment does
+---
 
-- Two agents debate **for** and **against** a topic (PRO vs CON).
-- A **judge** can optionally stop the debate early when a clear winner or agreement emerges.
-- A **summarizer/analyst** periodically reviews the transcript to detect repetition, refuted arguments, and stalemates.
-- When loops are detected, the system **resets** both debaters with updated prompt restrictions that forbid exhausted lines of argument.
+## Features
 
-This creates a controlled environment to study:
+- **Autonomous Debate System**: Two AI agents (PRO vs CON) debate a configurable topic without human intervention.
+- **Anti-Loop Checkpoint System**: Periodically analyzes the debate for argument repetition and exhaustion, injecting restrictions to prevent loops.
+- **Optional Judge Agent**: Can stop the debate early when a clear winner emerges, agreement is reached, or one debater concedes.
+- **Summarizer/Analyst Agent**: Tracks arguments, detects stalemates, and generates restrictions for exhausted argument lines.
+- **Rich Markdown Output**: Uses the `rich` library for beautiful terminal output with proper markdown rendering.
+- **Flexible Configuration**: All settings (models, prompts, checkpoint intervals) are configurable via YAML.
+- **Transcript Export**: Optionally save the full debate transcript to a file.
 
-- Argumentation dynamics over many turns.
-- The effect of prompt‑based constraints on repetition and convergence.
-- How summarization can extend effective context in limited‑context models.
+---
 
-## How the agents work
+## How It Works
 
-### Debater agents
+### Debate Flow
 
-Each debater is an instance of `DebateAgent` built on **LangChain + Ollama**:
-
-- A **system prompt** defines the role (PRO/CON), topic, style, and language.
-- Each response is appended to memory as a chat history.
-- When a checkpoint triggers, both agents are **reset** with a new system prompt that injects **restrictions** plus a short **context summary**.
-
-This reset keeps the debate on track without requiring a large context window.
-
-### Summarizer agent (anti‑loop mechanism)
-
-The summarizer analyzes recent transcript slices and returns a JSON analysis with:
-
-- arguments made by each side,
-- refuted arguments,
-- stalemate topics,
-- exhausted lines that should not be repeated,
-- key points and current focus.
-
-From this, the system generates restriction text and updates the debaters’ system prompts. If violations are too frequent, the debate is terminated early.
-
-### Judge agent (optional)
-
-If enabled, the judge periodically inspects the latest transcript and decides whether to end the debate. It can also be forced to deliver a final verdict after rule‑violation termination.
-
-## Running the experiment
-
-### 1) Configure settings
-
-Edit [config/settings.yaml](config/settings.yaml) to set:
-
-- `debate.topic` — the debate subject
-- `debate.max_turns` — maximum number of turns
-- `debate.language` — response language
-- `checkpoint.interval_turns` — how often to analyze
-- model names/temperatures for debaters, judge, and summarizer
-
-### 2) Run from CLI
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip3 install -e .
-debate-cli --config config/settings.yaml
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        DEBATE LOOP                               │
+├──────────────────────────────────────────────────────────────────┤
+│   ┌─────────────┐         ┌─────────────┐                        │
+│   │  Debater A  │ ◄─────► │  Debater B  │                        │
+│   │    (PRO)    │         │    (CON)    │                        │
+│   └──────┬──────┘         └──────┬──────┘                        │
+│          │                       │                               │
+│          └───────────┬───────────┘                               │
+│                      ▼                                           │
+│          ┌───────────────────────┐                               │
+│          │  Checkpoint Analysis  │ (every N turns)               │
+│          └───────────┬───────────┘                               │
+│                      │                                           │
+│     ┌────────────────┼────────────────┐                          │
+│     ▼                ▼                ▼                          │
+│ ┌────────┐    ┌────────────┐    ┌─────────────┐                  │
+│ │ Judge  │    │ Summarizer │    │  Inject     │                  │
+│ │Evaluate│    │  Analyze   │    │ Restrictions│                  │
+│ └────────┘    └────────────┘    └─────────────┘                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-Optional flags:
+### Agent Architecture
 
-- `-p, --prompt` override topic
-- `-f, --file` save transcript to file
+#### Debater Agents (`DebateAgent`)
 
-## Key files
+Each debater is a LangChain-powered agent using `ChatOllama`:
 
-- [src/debate_arena/main.py](src/debate_arena/main.py) — CLI entry point
-- [src/debate_arena/core/manager.py](src/debate_arena/core/manager.py) — debate loop, checkpoints, judge logic
-- [src/debate_arena/agents/debater.py](src/debate_arena/agents/debater.py) — debater agent
-- [src/debate_arena/agents/summarizer.py](src/debate_arena/agents/summarizer.py) — summarizer/analyst agent
-- [config/settings.yaml](config/settings.yaml) — experiment configuration
+- **System Prompt**: Defines the role (PRO/CON), topic, style, and language.
+- **Memory Management**: Uses `ChatMessageHistory` to maintain conversation context.
+- **Reset with Restrictions**: When checkpoints trigger, agents are reset with updated prompts containing forbidden argument lines and a context summary.
 
-## Notes
+#### Summarizer Agent (`SummarizerAgent`)
 
-- The system is designed for **Ollama‑compatible** models via `langchain_ollama`.
-- The debate can be run without a judge; in that case it will end at `max_turns` or via anti‑loop termination.
-- Restriction injection is the core mechanism that prevents repetitive argumentation and keeps the debate progressing.
+Analyzes debate transcripts and returns structured JSON analysis:
+
+- Arguments made by each side
+- Refuted arguments
+- Stalemate topics
+- Exhausted lines that should not be repeated
+- Key points and current debate focus
+
+#### Judge Agent (Optional)
+
+Periodically inspects the transcript and can decide to:
+
+- **Continue**: Debate is still productive
+- **End**: Agreement reached, total refutation, or concession detected
+
+---
+
+## Project Structure
+
+```
+debateArena/
+├── config/
+│   └── settings.yaml          # Main configuration file
+├── docs/                      # Documentation and sample outputs
+├── src/
+│   └── debate_arena/
+│       ├── __init__.py
+│       ├── main.py            # CLI entry point
+│       ├── agents/
+│       │   ├── __init__.py
+│       │   ├── debater.py     # DebateAgent class
+│       │   └── summarizer.py  # SummarizerAgent & DebateSummary
+│       ├── core/
+│       │   ├── __init__.py
+│       │   └── manager.py     # DebateManager (orchestration)
+│       └── utils/
+│           ├── __init__.py
+│           └── config_loader.py  # YAML configuration loader
+├── pyproject.toml             # Package configuration
+└── README.md
+```
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Python 3.9+
+- [Ollama](https://ollama.ai/) installed and running with your preferred models
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/arrase/debateArena.git
+cd debateArena
+
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install the package
+pip install -e .
+```
+
+---
+
+## Usage
+
+### Basic Usage
+
+```bash
+# Run with topic from config
+debate-cli --config config/settings.yaml
+
+# Override topic via CLI
+debate-cli -p "¿Es ético el uso de inteligencia artificial en la medicina?"
+
+# Save transcript to file
+debate-cli -p "El cambio climático es reversible" -f debate_output.txt
+```
+
+### CLI Arguments
+
+| Argument | Short | Description |
+|----------|-------|-------------|
+| `--config` | | Path to configuration file (default: `config/settings.yaml`) |
+| `--prompt` | `-p` | Override the debate topic |
+| `--file` | `-f` | Save transcript to specified file |
+
+---
+
+## Configuration
+
+All settings are defined in `config/settings.yaml`:
+
+### Debate Settings
+
+```yaml
+debate:
+  max_turns: 100              # Maximum number of debate turns
+  topic: "La tierra es plana" # Default debate topic
+  min_chars_per_turn: 50      # Minimum characters per response
+  language: "Spanish"         # Response language
+```
+
+### Checkpoint System
+
+```yaml
+checkpoint:
+  enabled: true
+  interval_turns: 2           # Analyze every N turns
+  max_violations: 1           # End after N violations
+```
+
+### Model Configuration
+
+```yaml
+models:
+  debater_a:
+    name: "nemotron-3-nano:30b"
+    temperature: 0.7
+    system_prompt: |
+      You are Debater A. You are a passionate advocate for the PRO side...
+  
+  debater_b:
+    name: "nemotron-3-nano:30b"
+    temperature: 0.7
+    system_prompt: |
+      You are Debater B. You are a passionate advocate for the CON side...
+  
+  judge:
+    name: "nemotron-3-nano:30b"
+    temperature: 0.2
+    system_prompt: |
+      You are the impartial Judge of this debate...
+  
+  summarizer:
+    name: "nemotron-3-nano:30b"
+    temperature: 0.1
+```
+
+---
+
+## Technical Details
+
+### Anti-Loop Mechanism
+
+The core innovation is the **restriction injection system**:
+
+1. After N turns, the `SummarizerAgent` analyzes the transcript
+2. It identifies exhausted/repeated argument lines
+3. Generates restriction text that forbids these arguments
+4. Both debaters are **reset** with updated system prompts containing:
+   - The original instructions
+   - A context summary of debate progress
+   - Explicit restrictions on exhausted arguments
+
+This allows limited-context models to maintain debate coherence over many turns.
+
+### Warning System
+
+Before terminating a debate due to argument exhaustion:
+
+1. **First violation**: Warning is issued with a summary of exhausted topics
+2. **Second violation**: Debate is terminated, judge delivers final verdict
+
+---
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `langchain` | LLM orchestration framework |
+| `langchain-community` | Community integrations |
+| `langchain-ollama` | Ollama integration for local LLMs |
+| `PyYAML` | YAML configuration parsing |
+| `rich` | Beautiful terminal output and markdown rendering |
+
+---
+
+## Research Applications
+
+This experiment is designed to study:
+
+- **Argumentation dynamics** over extended multi-turn debates
+- **Prompt-based constraints** and their effect on repetition/convergence
+- **Context summarization** as a mechanism to extend effective context in limited-context models
+- **LLM behavior** when faced with concession opportunities or logical defeat
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
