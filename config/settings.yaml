@@ -7,8 +7,8 @@ debate:
 # Anti-loop checkpoint system configuration
 checkpoint:
   enabled: true
-  interval_turns: 2  # Analyze and potentially reset every N turns
-  max_violations: 1  # End debate after this many violations (repeated exhausted args)
+  interval_turns: 1  # Analyze and potentially reset every N turns
+  max_violations: 2  # End debate after this many violations (repeated exhausted args)
 
 models:
   debater_a:
