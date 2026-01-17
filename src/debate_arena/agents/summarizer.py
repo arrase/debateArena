@@ -1,12 +1,4 @@
-"""
-Summarizer Agent - Analyzes debate progress and tracks exhausted argument lines.
-
-This agent periodically reviews the conversation to:
-1. Identify arguments that have been used by each debater
-2. Determine which arguments have been successfully refuted
-3. Track stalemates where neither side has made progress
-4. Generate restrictions for debaters to avoid repetitive argumentation
-"""
+"""Summarizer agent for debate analysis and exhausted-argument tracking."""
 
 import json
 from dataclasses import dataclass, field
@@ -16,18 +8,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 
 @dataclass
-class ArgumentStatus:
-    """Represents the status of an argument in the debate."""
-    argument: str
-    owner: str  # 'debater_a' or 'debater_b'
-    status: str  # 'active', 'refuted', 'stalemate'
-    refuted_by: Optional[str] = None
-    turns_discussed: int = 1
-
-
-@dataclass
 class DebateSummary:
-    """Summary of the debate state including argument restrictions."""
     exhausted_arguments: List[str] = field(default_factory=list)
     refuted_arguments: Dict[str, List[str]] = field(default_factory=dict)  # {debater: [args]}
     stalemate_topics: List[str] = field(default_factory=list)
@@ -36,7 +17,6 @@ class DebateSummary:
     total_violations: int = 0
     
     def to_restriction_text(self, language: str = "Spanish") -> str:
-        """Generate restriction text to inject into debater prompts."""
         lines = []
         
         if self.exhausted_arguments:
@@ -87,7 +67,6 @@ class DebateSummary:
 
 
 class SummarizerAgent:
-    """Agent responsible for summarizing debate progress and tracking argument exhaustion."""
     
     ANALYSIS_PROMPT = """You are an expert debate analyst. Your role is to track argument exhaustion and prevent repetitive debates.
 
@@ -138,32 +117,18 @@ Transcript:
 """
 
     def __init__(self, model_name: str, temperature: float = 0.1, language: str = "Spanish"):
-        """Initialize the summarizer agent."""
         self.llm = ChatOllama(model=model_name, temperature=temperature)
         self.language = language
         self.cumulative_summary = DebateSummary()
         self.analysis_history: List[Dict[str, Any]] = []
     
     def analyze_debate(
-        self, 
-        transcript: List[Tuple[str, str]], 
+        self,
+        transcript: List[Tuple[str, str]],
         topic: str,
-        previous_restrictions: Optional[str] = None
+        previous_restrictions: Optional[str] = None,
     ) -> Tuple[DebateSummary, bool, str]:
-        """
-        Analyze the debate transcript and return updated summary.
-        
-        Args:
-            transcript: List of (speaker, message) tuples
-            topic: The debate topic
-            previous_restrictions: Previous restrictions that were given
-            
-        Returns:
-            Tuple of (DebateSummary, should_end, end_reason)
-        """
         transcript_text = self._format_transcript(transcript)
-        
-        # Build the previous restrictions block for context
         previous_restrictions_block = ""
         if previous_restrictions:
             previous_restrictions_block = (
@@ -171,121 +136,75 @@ Transcript:
                 f"{previous_restrictions}\n\n"
                 "If a debater uses any of these restricted arguments again, count it as a VIOLATION."
             )
-        
         prompt = self.ANALYSIS_PROMPT.format(
             topic=topic,
             transcript=transcript_text,
             language=self.language,
             previous_restrictions_block=previous_restrictions_block
         )
-        
         messages = [
             SystemMessage(content="You are a precise debate analyst. Output only valid JSON."),
             HumanMessage(content=prompt)
         ]
-        
         try:
             response = self.llm.invoke(messages)
             analysis = self._parse_analysis(response.content)
-            
             if analysis:
                 self._update_cumulative_summary(analysis)
                 self.analysis_history.append(analysis)
-                
                 should_end = analysis.get("should_end", False)
                 end_reason = analysis.get("end_reason", "")
-                violations = analysis.get("violations_detected", 0)
-                
-                # Force end if too many violations
-                if violations >= 3:
-                    should_end = True
-                    end_reason = f"Debate terminated: {violations} rule violations detected (repeated exhausted arguments)"
-                
                 return self.cumulative_summary, should_end, end_reason
-                
         except Exception as e:
             print(f"[Summarizer] Analysis error: {e}")
-        
         return self.cumulative_summary, False, ""
     
     def _format_transcript(self, transcript: List[Tuple[str, str]]) -> str:
-        """Format transcript for analysis."""
         lines = []
         for speaker, message in transcript:
-            # Truncate very long messages to save context
             if len(message) > 500:
                 message = message[:500] + "..."
             lines.append(f"{speaker}: {message}")
         return "\n\n".join(lines)
     
     def _parse_analysis(self, response: str) -> Optional[Dict[str, Any]]:
-        """Parse JSON response from the LLM."""
-        # Clean up common issues
         response = response.strip()
-        
-        # Try to extract JSON if wrapped in markdown
-        if "```json" in response:
-            start = response.find("```json") + 7
+        if "```" in response:
+            start = response.find("```json")
+            start = (start + 7) if start >= 0 else response.find("```") + 3
             end = response.find("```", start)
             if end > start:
                 response = response[start:end].strip()
-        elif "```" in response:
-            start = response.find("```") + 3
-            end = response.find("```", start)
-            if end > start:
-                response = response[start:end].strip()
-        
-        try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            # Try to find JSON object in response
-            start = response.find("{")
-            end = response.rfind("}") + 1
-            if start >= 0 and end > start:
-                try:
-                    return json.loads(response[start:end])
-                except json.JSONDecodeError:
-                    pass
+        for payload in (response, response[response.find("{"):response.rfind("}") + 1]):
+            try:
+                return json.loads(payload)
+            except Exception:
+                continue
         return None
     
     def _update_cumulative_summary(self, analysis: Dict[str, Any]):
-        """Update cumulative summary with new analysis."""
-        # Add new exhausted arguments (avoid duplicates)
         for arg in analysis.get("exhausted_lines", []):
             if arg and arg not in self.cumulative_summary.exhausted_arguments:
                 self.cumulative_summary.exhausted_arguments.append(arg)
-        
-        # Update refuted arguments
         for debater, args in analysis.get("refuted_arguments", {}).items():
-            if debater not in self.cumulative_summary.refuted_arguments:
-                self.cumulative_summary.refuted_arguments[debater] = []
+            bucket = self.cumulative_summary.refuted_arguments.setdefault(debater, [])
             for arg in args:
-                if arg and arg not in self.cumulative_summary.refuted_arguments[debater]:
-                    self.cumulative_summary.refuted_arguments[debater].append(arg)
-        
-        # Add stalemate topics
+                if arg and arg not in bucket:
+                    bucket.append(arg)
         for topic in analysis.get("stalemate_topics", []):
             if topic and topic not in self.cumulative_summary.stalemate_topics:
                 self.cumulative_summary.stalemate_topics.append(topic)
-        
-        # Update key points (keep last 5)
         for point in analysis.get("key_points", []):
             if point:
                 self.cumulative_summary.key_points.append(point)
         self.cumulative_summary.key_points = self.cumulative_summary.key_points[-5:]
-        
-        # Update current focus
         if analysis.get("current_focus"):
             self.cumulative_summary.current_focus = analysis["current_focus"]
-        
-        # Accumulate violations
         self.cumulative_summary.total_violations += analysis.get("violations_detected", 0)
     
     def get_restriction_text(self) -> str:
-        """Get current restriction text for debater prompts."""
         return self.cumulative_summary.to_restriction_text(self.language)
     
     def reset(self):
-        """Reset the summarizer state."""
         self.cumulative_summary = DebateSummary()
         self.analysis_history = []

@@ -16,9 +16,7 @@ def main():
     try:
         config_path = Path(args.config)
         if not config_path.exists():
-            root_path = Path(__file__).resolve().parents[2]
-            config_path = root_path / args.config
-
+            config_path = Path(__file__).resolve().parents[2] / args.config
         config = load_config(str(config_path))
         topic = args.prompt or config["debate"]["topic"]
         if not topic:
