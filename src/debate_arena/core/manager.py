@@ -183,14 +183,18 @@ class DebateManager:
             # Get last exchange for continuity
             last_message = self.history[-1][1] if self.history else None
             
-            # Generate context summaries with position reinforcement for each debater
+            # Generate context summaries with role clarity for each debater
             context_summary_a = self._generate_context_summary(
                 summary, 
-                debater_position=f"PRO - You are defending that '{self.topic}' is TRUE"
+                debater_name="Debater A",
+                stance="PRO",
+                stance_description=f"You are arguing IN FAVOR of: '{self.topic}'"
             )
             context_summary_b = self._generate_context_summary(
                 summary,
-                debater_position=f"CON - You are arguing AGAINST the statement '{self.topic}'"
+                debater_name="Debater B",
+                stance="CON",
+                stance_description=f"You are arguing AGAINST: '{self.topic}'"
             )
             
             # Reset both agents with new restrictions and their respective position context
@@ -198,12 +202,12 @@ class DebateManager:
             self.agent_a.reset_with_restrictions(
                 restrictions=new_restrictions,
                 context_summary=context_summary_a,
-                last_exchange=f"[You are Debater A - PRO position] {last_message}" if last_message else None
+                last_exchange=last_message
             )
             self.agent_b.reset_with_restrictions(
                 restrictions=new_restrictions,
                 context_summary=context_summary_b,
-                last_exchange=f"[You are Debater B - CON position] {last_message}" if last_message else None
+                last_exchange=last_message
             )
             
             self._log(f"[Checkpoint] Exhausted arguments: {len(summary.exhausted_arguments)}")
@@ -243,20 +247,36 @@ class DebateManager:
         self._log("[Checkpoint] Debate continues with updated restrictions.")
         return False, None
     
-    def _generate_context_summary(self, summary: DebateSummary, debater_position: str = "") -> str:
+    def _generate_identity_block(self, debater_name: str, stance: str, stance_description: str) -> str:
+        """Generate a clear identity reminder block.
+        
+        Args:
+            debater_name: The debater's name (e.g., 'Debater A')
+            stance: PRO or CON
+            stance_description: Description of what position to defend
+        """
+        return f"""
+=== ROLE REMINDER ===
+You are: {debater_name}
+Your assigned stance: {stance}
+{stance_description}
+=====================
+"""
+
+    def _generate_context_summary(self, summary: DebateSummary, debater_name: str = "", stance: str = "", stance_description: str = "") -> str:
         """Generate a brief context summary for debater continuity.
         
         Args:
             summary: The debate summary containing key points and focus
-            debater_position: The position this debater is defending (PRO or CON)
+            debater_name: The debater's name (e.g., 'Debater A')
+            stance: PRO or CON
+            stance_description: Description of what position to defend
         """
         parts = []
         
-        # CRITICAL: Include the debater's assigned position to prevent role confusion
-        if debater_position:
-            parts.append(f"YOUR ASSIGNED POSITION: {debater_position}")
-            parts.append("You MUST continue defending this position throughout the debate.")
-            parts.append("")
+        # CRITICAL: Include highly visible identity block to prevent role confusion
+        if debater_name and stance:
+            parts.append(self._generate_identity_block(debater_name, stance, stance_description))
         
         if summary.current_focus:
             parts.append(f"Current focus: {summary.current_focus}")

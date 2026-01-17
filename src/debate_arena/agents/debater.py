@@ -47,19 +47,25 @@ class DebateAgent:
         
         Args:
             restrictions: Text describing forbidden/exhausted arguments
-            context_summary: Optional summary of debate progress to maintain continuity
-            last_exchange: Optional last message to continue from
+            context_summary: Optional summary of debate progress (includes identity block)
+            last_exchange: Optional last message to continue from (includes role reminder)
         """
         self.checkpoint_count += 1
         
-        # Build new system prompt with restrictions
-        new_prompt_parts = [self.base_system_prompt]
+        # Build new system prompt with identity reinforcement at the TOP
+        new_prompt_parts = []
         
+        # CRITICAL: Add context summary (with identity block) FIRST for maximum visibility
+        if context_summary:
+            new_prompt_parts.append(context_summary)
+            new_prompt_parts.append("")  # Empty line for separation
+        
+        # Then add the base system prompt
+        new_prompt_parts.append(self.base_system_prompt)
+        
+        # Finally add restrictions
         if restrictions:
             new_prompt_parts.append(restrictions)
-        
-        if context_summary:
-            new_prompt_parts.append(f"\n=== DEBATE CONTEXT ===\n{context_summary}\n")
         
         self.current_system_prompt = "\n".join(new_prompt_parts)
         
@@ -67,9 +73,9 @@ class DebateAgent:
         self.memory.clear()
         self.memory.add_message(SystemMessage(content=self.current_system_prompt))
         
-        # If there's a last exchange, add it to provide immediate context
+        # If there's a last exchange, add it to provide immediate context with role reminder
         if last_exchange:
-            self.memory.add_message(HumanMessage(content=f"[Continuing from previous discussion] {last_exchange}"))
+            self.memory.add_message(HumanMessage(content=last_exchange))
     
     def get_message_count(self) -> int:
         """Get the number of messages in memory."""
