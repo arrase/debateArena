@@ -13,13 +13,13 @@ class DebateManager:
         self.topic = topic
         self.output_file = output_file
         self.max_turns = config["debate"]["max_turns"]
-        self.language = config.get("debate", {}).get("response_language", "English")
+        self.language = config.get("debate", {}).get("language", "English")
         self.history: List[Tuple[str, str]] = []
         self.console = Console()
 
         checkpoint_config = config.get("checkpoint", {})
         self.checkpoint_interval = checkpoint_config.get("interval_turns", 5)
-        self.max_violations = checkpoint_config.get("violation_limit", 3)
+        self.max_violations = checkpoint_config.get("max_violations", 3)
 
         self.agent_a = self._create_agent("debater_a", config["models"]["debater_a"])
         self.agent_b = self._create_agent("debater_b", config["models"]["debater_b"])
