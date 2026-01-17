@@ -159,8 +159,8 @@ All settings are defined in `config/settings.yaml`:
 debate:
   max_turns: 100              # Maximum number of debate turns
   topic: "La tierra es plana" # Default debate topic
-  min_chars_per_turn: 50      # Minimum characters per response
-  language: "Spanish"         # Response language
+  min_chars_per_response: 50  # Minimum characters per response
+  response_language: "Spanish" # Response language
 ```
 
 ### Checkpoint System
@@ -169,7 +169,7 @@ debate:
 checkpoint:
   enabled: true
   interval_turns: 2           # Analyze every N turns
-  max_violations: 1           # End after N violations
+  violation_limit: 1          # End after N violations
 ```
 
 ### Model Configuration

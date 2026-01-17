@@ -1,14 +1,14 @@
 debate:
   max_turns: 100
   topic: "La tierra es plana"
-  min_chars_per_turn: 50
-  language: "Spanish"  # Language for all agent responses
+  min_chars_per_response: 50
+  response_language: "Spanish"  # Language for all agent responses
 
 # Anti-loop checkpoint system configuration
 checkpoint:
   enabled: true
   interval_turns: 1  # Analyze and potentially reset every N turns
-  max_violations: 2  # End debate after this many violations (repeated exhausted args)
+  violation_limit: 2  # End debate after this many violations (repeated exhausted args)
 
 models:
   debater_a:
@@ -91,7 +91,3 @@ models:
   summarizer:
     name: "gpt-oss:20b"
     temperature: 0.1
-
-context:
-  context_window: 4096
-  summary_trigger_token_count: 3000
