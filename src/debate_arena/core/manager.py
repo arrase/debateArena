@@ -3,6 +3,10 @@ import json
 from typing import Dict, Any, Optional, List, Tuple
 from debate_arena.agents.debater import DebateAgent
 from debate_arena.agents.summarizer import SummarizerAgent, DebateSummary
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+from rich.markdown import Markdown
 
 
 class DebateManager:
@@ -14,6 +18,7 @@ class DebateManager:
         self.max_turns = config['debate']['max_turns']
         self.language = config.get('debate', {}).get('language', 'English')
         self.history: List[Tuple[str, str]] = []
+        self.console = Console()
         
         # Checkpoint configuration
         checkpoint_config = config.get('checkpoint', {})
@@ -58,15 +63,28 @@ class DebateManager:
             system_prompt=system_prompt,
         )
 
-    def _log(self, message: str):
-        """Print message to stdout and optional file."""
-        print(message)
+    def _log(self, message: Any, style: str = "white", title: Optional[str] = None):
+        """Print message to stdout using Rich and optional file."""
+        if isinstance(message, str) and not title:
+             self.console.print(message, style=style)
+        else:
+             # content = message if isinstance(message, str) else str(message) <--- OLD BUGGY LINE
+             # If it's not a string, assume it's a renderable (like Markdown) or convert non-renderables
+             content = message
+             if not isinstance(message, (str, Markdown)):
+                 content = str(message)
+                 
+             self.console.print(Panel(content, title=title, border_style=style))
+
         if self.output_file:
             try:
                 with open(self.output_file, 'a', encoding='utf-8') as f:
-                    f.write(message + "\n")
+                    clean_msg = str(message)
+                    if title:
+                        clean_msg = f"[{title}] {clean_msg}"
+                    f.write(clean_msg + "\n")
             except Exception as e:
-                print(f"[Warning] Failed to write to file: {e}")
+                self.console.print(f"[Warning] Failed to write to file: {e}", style="bold red")
 
     def _record_verdict(self, verdict: Dict[str, Any]):
         """Record judge verdict in transcript and history."""
@@ -74,7 +92,9 @@ class DebateManager:
         reason = verdict.get("reason", "")
         verdict_line = f"[Judge verdict] decision=end winner={winner} reason={reason}"
         self.history.append(("Judge", verdict_line))
-        self._log(verdict_line)
+        verdict_line = f"judge verdict: decision={winner} reason={reason}"
+        self.history.append(("Judge", verdict_line))
+        self._log(f"Judge Verdict: {winner}\nReason: {reason}", style="bold yellow", title="JUDGE")
 
     def _evaluate_with_judge(self, force_verdict: bool = False, exhausted_args_reason: str = "") -> Optional[Dict[str, Any]]:
         """
@@ -152,9 +172,9 @@ class DebateManager:
         self._log("[Checkpoint] Judge evaluating for agreement or total refutation...")
         verdict = self._evaluate_with_judge()
         if verdict and verdict.get("decision") == "end":
-            self._log(f"[Checkpoint] Judge determined debate should end: {verdict.get('reason', '')}")
+            self._log(f"Judge determined debate should end: {verdict.get('reason', '')}", style="bold red", title="CHECKPOINT: JUDGE")
             return True, verdict
-        self._log("[Checkpoint] Judge: Debate should continue, no clear winner yet.")
+        self._log("Judge: Debate should continue, no clear winner yet.", style="dim")
         
         # =====================================================
         # STEP 2: SUMMARIZER - Analyze and restrict exhausted arguments
@@ -162,7 +182,7 @@ class DebateManager:
         if not self.summarizer:
             return False, None
         
-        self._log("[Checkpoint] Analyzing debate progress and exhausted arguments...")
+        self._log("Analyzing debate progress and exhausted arguments...", style="dim")
         
         # Get recent history for analysis (since last checkpoint)
         history_slice = self.history[-(self.checkpoint_interval * 2 + 2):]
@@ -208,7 +228,9 @@ class DebateManager:
             
             # Reset both agents with new restrictions and their respective position context
             # CRITICAL: Each debater receives their OPPONENT's last message, not their own
-            self._log("[Checkpoint] Updating debater prompts with new restrictions...")
+            self._log("Updating debater prompts with new restrictions...", style="bold cyan", title="CHECKPOINT: SUMMARIZER")
+            if hasattr(summary, 'suggested_direction') and summary.suggested_direction:
+                 self._log(f"Strategic Guidance: {summary.suggested_direction}", style="italic cyan")
             self.agent_a.reset_with_restrictions(
                 restrictions=new_restrictions,
                 context_summary=context_summary_a,
@@ -220,8 +242,8 @@ class DebateManager:
                 last_exchange=last_message_from_a  # B receives A's last message
             )
             
-            self._log(f"[Checkpoint] Exhausted arguments: {len(summary.exhausted_arguments)}")
-            self._log(f"[Checkpoint] Total violations detected: {summary.total_violations}")
+            self._log(f"Exhausted arguments: {len(summary.exhausted_arguments)}", style="dim")
+            self._log(f"Total violations detected: {summary.total_violations}", style="dim")
         
         # =====================================================
         # STEP 3: CHECK FOR TERMINATION CONDITIONS
@@ -231,7 +253,8 @@ class DebateManager:
         if should_end:
             self.forced_end = True
             self.end_reason = end_reason or "Debate terminated: all argumentative lines have been exhausted"
-            self._log(f"\n[Checkpoint] {self.end_reason}")
+            self.end_reason = end_reason or "Debate terminated: all argumentative lines have been exhausted"
+            self._log(f"{self.end_reason}", style="bold red", title="CHECKPOINT: TERMINATION")
             verdict = self._evaluate_with_judge(
                 force_verdict=True, 
                 exhausted_args_reason="Debate ended without consensus - no new arguments available"
@@ -246,7 +269,11 @@ class DebateManager:
                 f"Debate terminated without consensus: {summary.total_violations} violations detected. "
                 f"Debaters failed to present new arguments after exhausting: {exhausted_list}"
             )
-            self._log(f"\n[Checkpoint] {self.end_reason}")
+            self.end_reason = (
+                f"Debate terminated without consensus: {summary.total_violations} violations detected. "
+                f"Debaters failed to present new arguments after exhausting: {exhausted_list}"
+            )
+            self._log(f"{self.end_reason}", style="bold red", title="CHECKPOINT: VIOLATION TERM")
             verdict = self._evaluate_with_judge(
                 force_verdict=True,
                 exhausted_args_reason=self.end_reason
@@ -254,7 +281,7 @@ class DebateManager:
             return True, verdict
         
         self.last_checkpoint_turn = turn
-        self._log("[Checkpoint] Debate continues with updated restrictions.")
+        self._log("Debate continues with updated restrictions.", style="green")
         return False, None
     
     def _generate_identity_block(self, debater_name: str, stance: str, stance_description: str) -> str:
@@ -315,19 +342,21 @@ Your assigned stance: {stance}
         turn = 1
         
         while turn <= self.max_turns:
-            self._log(f"\n--- Turn {turn}/{self.max_turns} ---")
+            self._log(f"\n--- Turn {turn}/{self.max_turns} ---", style="bold white")
 
-            print(f"\n[{self.agent_a.name} is thinking...]")
-            response_a = self.agent_a.run(last_message)
-            self._log(f"{self.agent_a.name}: {response_a}")
+            with self.console.status(f"[bold green]{self.agent_a.name} is thinking...", spinner="dots"):
+                response_a = self.agent_a.run(last_message)
+            
+            self._log(Markdown(response_a), style="green", title=f"{self.agent_a.name} (PRO)")
             self.history.append((self.agent_a.name, response_a))
             last_message = response_a
 
             time.sleep(1)
 
-            print(f"\n[{self.agent_b.name} is thinking...]")
-            response_b = self.agent_b.run(last_message)
-            self._log(f"{self.agent_b.name}: {response_b}")
+            with self.console.status(f"[bold red]{self.agent_b.name} is thinking...", spinner="dots"):
+                response_b = self.agent_b.run(last_message)
+
+            self._log(Markdown(response_b), style="red", title=f"{self.agent_b.name} (CON)")
             self.history.append((self.agent_b.name, response_b))
             last_message = response_b
 
