@@ -90,7 +90,3 @@ models:
   summarizer:
     name: "gpt-oss:20b"
     temperature: 0.1
-
-context:
-  context_window: 4096
-  summary_trigger_token_count: 3000
