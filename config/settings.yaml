@@ -4,7 +4,7 @@ runtime:
 
 debate:
   language: "Spanish"
-  max_rounds: 8
+  max_rounds: 50
   referee_interval: 1
   max_response_words: 180
 
