@@ -1,92 +1,45 @@
-debate:
-  max_turns: 100
-  topic: "La tierra es plana"
-  language: "Spanish"  # Language for all agent responses
+runtime:
+  ollama_base_url: "http://localhost:11434"
+  request_timeout_seconds: 120
 
-# Anti-loop checkpoint system configuration
-checkpoint:
-  enabled: true
-  interval_turns: 1  # Analyze and potentially reset every N turns
-  max_violations: 2  # End debate after this many violations (repeated exhausted args)
+debate:
+  language: "Spanish"
+  max_rounds: 8
+  referee_interval: 1
+  max_response_words: 180
+
+prompt_repository:
+  directory: "prompts"
+  opening_prompt_file: "opening_instruction.j2"
+
+context_policy:
+  context_window: 30000
+  usage_threshold_ratio: 0.85
+  response_buffer_tokens: 512
+  preserve_recent_messages: 4
+  compact_summary_max_chars: 3200
 
 models:
   debater_a:
-    name: "gpt-oss:20b"
+    name: "gemma4:e4b"
     temperature: 0.7
-    system_prompt: |
-      You are Debater A. You are a passionate advocate for the PRO side of the topic: "{topic}".
-      Your goal is to convince the opponent and the audience.
-      Be logical, persuasive, and respectful but firm.
-      Keep your responses concise (under 200 words).
-      Do not repeat arguments provided in previous turns.
-      You **MUST** respond to the user in {language}.
-      
-      CRITICAL INSTRUCTION:
-      Although you are an advocate, you must remain intellectually honest.
-      If your opponent presents an irrefutable argument or a superior logic that dismantles your position, you should ACKNOWLEDGE it.
-      If you are truly cornered or convinced, do not be stubborn. It is acceptable and encouraged to concede valid points or even admit the opponent has won the debate if their arguments are undeniable.
-      Your goal is to find the truth through debate, not just to "win" at all costs if you are wrong.
-  
+    keep_alive: "5m"
+    prompt_file: "debater.j2"
+
   debater_b:
-    name: "gpt-oss:20b"
+    name: "gemma4:e4b"
     temperature: 0.7
-    system_prompt: |
-      You are Debater B. You are a passionate advocate for the CON side of the topic: "{topic}".
-      Your goal is to counter the opponent's arguments and present your own.
-      Be logical, persuasive, and respectful but firm.
-      Keep your responses concise (under 200 words).
-      Do not repeat arguments provided in previous turns.
-      You **MUST** respond to the user in {language}.
+    keep_alive: "5m"
+    prompt_file: "debater.j2"
 
-      CRITICAL INSTRUCTION:
-      Although you are an advocate, you must remain intellectually honest.
-      If your opponent presents an irrefutable argument or a superior logic that dismantles your position, you should ACKNOWLEDGE it.
-      If you are truly cornered or convinced, do not be stubborn. It is acceptable and encouraged to concede valid points or even admit the opponent has won the debate if their arguments are undeniable.
-      Your goal is to find the truth through debate, not just to "win" at all costs if you are wrong.
-
-  judge:
-    name: "gpt-oss:20b"
+  referee:
+    name: "gemma4:e4b"
     temperature: 0.2
-    system_prompt: |
-      You are the impartial Judge of this debate.
-      You **MUST** write all your responses in {language}.
-    
-    # Prompt for regular checkpoint evaluation
-    evaluation_prompt: |
-      Analyze the transcript carefully and determine if the debate should END.
-      
-      END the debate ONLY if ONE of these conditions is CLEARLY met:
-      1. AGREEMENT: Both debaters have reached a consensus or mutual understanding
-      2. TOTAL REFUTATION: One debater has completely and irrefutably dismantled ALL of their opponent's arguments, leaving no valid counterpoints
-      3. CONCESSION: One debater has explicitly admitted defeat or conceded
-      
-      If the debate is still productive with valid arguments on both sides, choose 'continue'.
-      
-      Respond ONLY with a valid JSON on a single line:
-      {{"decision": "continue|end", "winner": "debater_a|debater_b|draw", "reason": "explanation in {language}"}}
-      
-      Topic: {topic}
-      
-      Transcript:
-      {transcript}
-    
-    # Prompt for forced verdict when debate is terminated
-    forced_verdict_prompt: |
-      The debate has been terminated. You MUST provide a final verdict NOW.
-      
-      TERMINATION REASON: {termination_reason}
-      
-      Based on the arguments presented, determine the winner or declare a draw.
-      
-      Respond ONLY with a valid JSON on a single line:
-      {{"decision": "end", "winner": "debater_a|debater_b|draw", "reason": "explanation in {language}"}}
-      
-      Topic: {topic}
-      
-      Transcript:
-      {transcript}
+    keep_alive: "5m"
+    prompt_file: "referee_review.j2"
 
-  # Summarizer agent for analyzing debate progress (uses judge model by default if not specified)
-  summarizer:
-    name: "gpt-oss:20b"
+  compactor:
+    name: "gemma4:e4b"
     temperature: 0.1
+    keep_alive: "5m"
+    prompt_file: "compactor.j2"
