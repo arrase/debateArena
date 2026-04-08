@@ -6,9 +6,10 @@ CLI autónomo para hacer debatir a dos LLM sobre una tesis dada por el usuario. 
 
 1. `debater_a` toma la postura **a favor**.
 2. `debater_b` toma la postura **en contra**.
-3. `referee` revisa cada ronda, detecta bucles, prohíbe líneas agotadas y decide cuándo cerrar.
-4. `compactor` resume historial antes de saturar `num_ctx`.
-5. `referee` emite un veredicto final con ganador o empate.
+3. Un guard de coherencia valida cada turno y fuerza una reescritura si un debatiente deriva hacia la postura rival.
+4. `referee` revisa cada ronda, detecta bucles, prohíbe líneas agotadas por debatiente y decide cuándo cerrar.
+5. `compactor` resume historial antes de saturar `num_ctx`.
+6. `referee` emite un veredicto final con ganador o empate.
 
 ## Arquitectura
 
@@ -38,6 +39,7 @@ Todos los prompts viven en `config/prompts/`:
 - `opening_instruction.j2`
 - `referee_review.j2`
 - `referee_final.j2`
+- `turn_guard.j2`
 - `compactor.j2`
 
 ## Uso

@@ -5,21 +5,28 @@ Valid values:
 - winner: debater_a, debater_b, or draw
 - loop_detected: true or false
 - no_new_arguments: true or false
-- exhausted_argument_lines: list of strings
+- exhausted_argument_lines_a: exhausted lines Debater A must not reuse
+- exhausted_argument_lines_b: exhausted lines Debater B must not reuse
 - strongest_point_a: best current point from Debater A
 - strongest_point_b: best current point from Debater B
-- claims_refuted: short list of claims already refuted
-- claims_unanswered: short list of claims still unanswered
-- actionable_restrictions: list of concrete operational prohibitions
-- required_next_move: brief and actionable instruction for the next turn
+- claims_refuted_a: short list of Debater A claims already refuted
+- claims_refuted_b: short list of Debater B claims already refuted
+- claims_unanswered_a: short list of Debater A claims still unanswered
+- claims_unanswered_b: short list of Debater B claims still unanswered
+- actionable_restrictions_a: concrete operational prohibitions for Debater A
+- actionable_restrictions_b: concrete operational prohibitions for Debater B
+- required_next_move_a: brief and actionable instruction for Debater A's next turn
+- required_next_move_b: brief and actionable instruction for Debater B's next turn
 - decisive_line: empty string unless the debate is practically resolved
 - concessions_observed: list of observed concessions
 
 Criteria:
-- Use end if there is a concession, decisive refutation, or no useful new arguments remain.
+- Use end if there is a concession, decisive refutation, stance-switching, or no useful new arguments remain.
 - Use continue if productive exchange is still possible.
+- Penalize role drift: speaking as the rival, endorsing the rival's thesis as your own, or conceding the core case without clear narrowing language.
 - Penalize frame-escape behavior: redefining the topic, moving the goalposts, or fleeing to meta-discussion without answering the rival's strongest point.
-- Restrictions must be enforceable, not vague summaries.
+- Restrictions must be enforceable, attached to the correct debater, and should help stop loops rather than repeat them.
+- If a line is exhausted for only one side, place it only in that side's exhausted list.
 
 Topic: {{ topic }}
 Rounds completed: {{ completed_rounds }}

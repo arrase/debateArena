@@ -5,18 +5,24 @@ Valid values:
 - winner: debater_a, debater_b, or draw
 - loop_detected: true or false
 - no_new_arguments: true or false
-- exhausted_argument_lines: list of strings
+- exhausted_argument_lines_a: exhausted lines Debater A must not reuse
+- exhausted_argument_lines_b: exhausted lines Debater B must not reuse
 - strongest_point_a: best final point from Debater A
 - strongest_point_b: best final point from Debater B
-- claims_refuted: short list of refuted claims
-- claims_unanswered: short list of claims left unresolved
-- actionable_restrictions: list of relevant active restrictions
-- required_next_move: empty string
+- claims_refuted_a: short list of Debater A claims already refuted
+- claims_refuted_b: short list of Debater B claims already refuted
+- claims_unanswered_a: short list of Debater A claims left unresolved
+- claims_unanswered_b: short list of Debater B claims left unresolved
+- actionable_restrictions_a: relevant active restrictions for Debater A
+- actionable_restrictions_b: relevant active restrictions for Debater B
+- required_next_move_a: empty string
+- required_next_move_b: empty string
 - decisive_line: the argumentative line that decided the debate
 - concessions_observed: observed concessions
 
 Decide the final winner based on argumentative quality.
 The final reason must explain why the winner prevailed, not just name the winner.
+Penalize stance-switching, role drift, circular repetition, and exhausted lines that were ignored.
 
 Topic: {{ topic }}
 Closing reason: {{ termination_reason }}

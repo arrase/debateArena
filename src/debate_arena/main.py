@@ -9,7 +9,7 @@ from debate_arena.config.loader import load_config
 from debate_arena.graph.workflow import DebateWorkflow
 from debate_arena.llm.ollama import OllamaChatFactory
 from debate_arena.prompts.repository import PromptRepository
-from debate_arena.services.presenter import ConsolePresenter
+from debate_arena.services.presenter import ConsoleDebateObserver, ConsolePresenter
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,13 +40,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         topic = (args.prompt or "").strip()
         if not topic:
             raise RuntimeError("No debate topic provided. Use -p/--prompt.")
+        observer = ConsoleDebateObserver()
         workflow = DebateWorkflow(
             config=config,
             prompt_repository=PromptRepository(config.prompts.directory),
             model_factory=OllamaChatFactory(config),
+            observer=observer,
         )
         result = workflow.run(topic=topic)
-        ConsolePresenter().present(result=result, output_file=Path(args.file) if args.file else None)
+        ConsolePresenter().present(result=result, output_file=Path(args.file) if args.file else None, skip_transcript=True)
         return 0
     except Exception as exc:  # noqa: BLE001 - CLI entry point should surface the real error.
         print(f"Fatal Error: {exc}", file=sys.stderr)

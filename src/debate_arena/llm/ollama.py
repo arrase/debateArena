@@ -58,25 +58,42 @@ def _format_for_role(role: str) -> Optional[dict[str, Any] | str]:
             "winner": {"type": ["string", "null"], "enum": ["debater_a", "debater_b", "draw", None]},
             "loop_detected": {"type": "boolean"},
             "no_new_arguments": {"type": "boolean"},
-            "exhausted_argument_lines": {
+            "exhausted_argument_lines_a": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "exhausted_argument_lines_b": {
                 "type": "array",
                 "items": {"type": "string"},
             },
             "strongest_point_a": {"type": "string"},
             "strongest_point_b": {"type": "string"},
-            "claims_refuted": {
+            "claims_refuted_a": {
                 "type": "array",
                 "items": {"type": "string"},
             },
-            "claims_unanswered": {
+            "claims_refuted_b": {
                 "type": "array",
                 "items": {"type": "string"},
             },
-            "actionable_restrictions": {
+            "claims_unanswered_a": {
                 "type": "array",
                 "items": {"type": "string"},
             },
-            "required_next_move": {"type": "string"},
+            "claims_unanswered_b": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "actionable_restrictions_a": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "actionable_restrictions_b": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "required_next_move_a": {"type": "string"},
+            "required_next_move_b": {"type": "string"},
             "decisive_line": {"type": "string"},
             "concessions_observed": {
                 "type": "array",
@@ -89,13 +106,18 @@ def _format_for_role(role: str) -> Optional[dict[str, Any] | str]:
             "winner",
             "loop_detected",
             "no_new_arguments",
-            "exhausted_argument_lines",
+            "exhausted_argument_lines_a",
+            "exhausted_argument_lines_b",
             "strongest_point_a",
             "strongest_point_b",
-            "claims_refuted",
-            "claims_unanswered",
-            "actionable_restrictions",
-            "required_next_move",
+            "claims_refuted_a",
+            "claims_refuted_b",
+            "claims_unanswered_a",
+            "claims_unanswered_b",
+            "actionable_restrictions_a",
+            "actionable_restrictions_b",
+            "required_next_move_a",
+            "required_next_move_b",
             "decisive_line",
             "concessions_observed",
         ],

@@ -50,6 +50,8 @@ def load_config(config_path: Path) -> AppConfig:
         raise RuntimeError(
             f"Opening prompt file '{prompts.opening_prompt_file}' does not exist in {prompt_directory}."
         )
+    if not (prompt_directory / "turn_guard.j2").exists():
+        raise RuntimeError(f"Missing turn_guard.j2 prompt template required for role-coherence validation in {prompt_directory}.")
     context_policy = ContextPolicyConfig(
         context_window=_positive_int(context_raw, "context_window"),
         usage_threshold_ratio=_ratio(context_raw, "usage_threshold_ratio"),

@@ -6,21 +6,62 @@ from typing import Optional
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.rule import Rule
 
-from debate_arena.domain.models import DebateResult
+from debate_arena.domain.models import DebateResult, TranscriptEntry
+
+
+class ConsoleDebateObserver:
+    """Prints debate progress to the console in real-time."""
+
+    def __init__(self) -> None:
+        self._console = Console()
+
+    def on_debate_start(self, topic: str) -> None:
+        self._console.print()
+        self._console.print(Panel.fit(f"[bold]Debate topic:[/bold] {topic}", border_style="cyan"))
+        self._console.print()
+
+    def on_turn(self, entry: TranscriptEntry) -> None:
+        color = "blue" if entry.role == "debater_a" else "green"
+        self._console.print(Rule(f"[bold {color}]{entry.speaker} · Round {entry.round_number}[/bold {color}]", style=color))
+        self._console.print(Markdown(entry.content))
+        self._console.print()
+
+    def on_review(self, round_number: int, decision: str, reason: str) -> None:
+        icon = "⚖️ " if decision == "continue" else "🏁"
+        label = "Continue" if decision == "continue" else "End"
+        self._console.print(f"[dim]{icon} Referee after round {round_number}: {label}[/dim]")
+        if reason:
+            self._console.print(f"[dim]   {reason}[/dim]")
+        self._console.print()
+
+    def on_compaction(self, compactions: int) -> None:
+        self._console.print(f"[dim]📦 Context compacted (#{compactions})[/dim]")
+        self._console.print()
+
+    def on_final_verdict_start(self) -> None:
+        self._console.print("[dim]⚖️  Computing final verdict…[/dim]")
+        self._console.print()
 
 
 class ConsolePresenter:
-    def __init__(self):
+    def __init__(self) -> None:
         self._console = Console()
 
-    def present(self, result: DebateResult, output_file: Optional[Path] = None) -> None:
-        self._console.print(Panel.fit(f"[bold]Debate topic:[/bold] {result.topic}", border_style="cyan"))
-        for entry in result.transcript:
-            color = "blue" if entry.role == "debater_a" else "green"
-            self._console.print(f"[bold {color}]{entry.speaker}[/bold {color}]")
-            self._console.print(Markdown(entry.content))
-            self._console.print()
+    def present(
+        self,
+        result: DebateResult,
+        output_file: Optional[Path] = None,
+        skip_transcript: bool = False,
+    ) -> None:
+        if not skip_transcript:
+            self._console.print(Panel.fit(f"[bold]Debate topic:[/bold] {result.topic}", border_style="cyan"))
+            for entry in result.transcript:
+                color = "blue" if entry.role == "debater_a" else "green"
+                self._console.print(f"[bold {color}]{entry.speaker}[/bold {color}]")
+                self._console.print(Markdown(entry.content))
+                self._console.print()
 
         self._console.print(
             Panel.fit(
