@@ -1,0 +1,20 @@
+Redacta en {{ language }} una explicación final concisa, objetiva y directa del veredicto ya emitido por el juez sobre el debate acerca de la tesis: "{{ topic }}".
+
+Datos oficiales del fallo del juez (inamovibles):
+- Ganador declarado: {{ winner_label }}
+- Probabilidades por opción: {{ probabilities }}
+- Confianza del fallo: {{ "%.2f"|format(confidence) }}
+- Factor decisivo: {{ decisive_factor }}
+- Puntuación media A favor (PRO): {{ "%.2f"|format(pro_avg_score) }}
+- Puntuación media En contra (CON): {{ "%.2f"|format(con_avg_score) }}
+- Motivo de finalización: {{ termination_reason }}
+{% if compact_summary %}
+
+Resumen de rondas previas:
+{{ compact_summary }}
+{% endif %}
+
+Transcripción reciente:
+{{ recent_transcript }}
+
+Explica en un máximo de dos párrafos breves en {{ language }} por qué los argumentos del debate y el factor decisivo justifican este veredicto, sin contradecir los datos oficiales del juez.

@@ -1,45 +1,27 @@
-runtime:
-  ollama_base_url: "http://localhost:11434"
-  request_timeout_seconds: 120
+ollama:
+  base_url: "http://localhost:11434"
+  timeout_seconds: 120
+  keep_alive: "5m"
+
+models:
+  language_model: "gemma4:12b-it-qat"
+  decision_model: "d1:latest"
+  debater_temperature: 0.7
+  compactor_temperature: 0.2
 
 debate:
   language: "Spanish"
-  max_rounds: 50
-  referee_interval: 1
+  max_rounds: 15
   max_response_words: 180
+  max_turn_attempts: 2
 
-prompt_repository:
-  directory: "prompts"
-  opening_prompt_file: "opening_instruction.j2"
+context:
+  num_ctx: 16384
+  compaction_threshold_ratio: 0.75
+  compaction_interval_rounds: 3
+  retain_recent_rounds: 2
 
-context_policy:
-  context_window: 30000
-  usage_threshold_ratio: 0.85
-  response_buffer_tokens: 512
-  preserve_recent_messages: 4
-  compact_summary_max_chars: 3200
-
-models:
-  debater_a:
-    name: "gemma4:e4b"
-    temperature: 0.7
-    keep_alive: "5m"
-    prompt_file: "debater.j2"
-
-  debater_b:
-    name: "gemma4:e4b"
-    temperature: 0.7
-    keep_alive: "5m"
-    prompt_file: "debater.j2"
-
-  referee:
-    name: "gemma4:e4b"
-    temperature: 0.2
-    keep_alive: "5m"
-    prompt_file: "referee_review.j2"
-
-  compactor:
-    name: "gemma4:e4b"
-    temperature: 0.1
-    keep_alive: "5m"
-    prompt_file: "compactor.j2"
+judge:
+  min_stance_probability: 0.50
+  max_repetition_probability: 0.70
+  end_debate_probability: 0.75

@@ -1,0 +1,5 @@
+{% if is_opening %}
+Inicia el debate sobre la tesis "{{ topic }}" presentando tu argumento inicial{% if stance_label %} desde tu postura ({{ stance_label }}){% endif %}{% if language %} en {{ language }}{% endif %}.
+{% else %}
+Continúa el debate sobre la tesis "{{ topic }}" a partir del resumen operativo y de los argumentos recientes{% if stance_label %}, manteniendo tu postura ({{ stance_label }}){% endif %}{% if language %} en {{ language }}{% endif %}.
+{% endif %}

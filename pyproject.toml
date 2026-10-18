@@ -5,17 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "debate-arena"
 version = "0.1.0"
-description = "Autonomous CLI debate system built with LangChain, LangGraph and Ollama"
+description = "Autonomous CLI debate system built with Ollama"
 authors = [
   { name = "Arrase", email = "arrase@example.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
-    "langchain",
-    "langchain-community",
-    "langchain-ollama",
-    "langgraph",
+    "ollama",
     "Jinja2",
     "PyYAML",
     "rich",

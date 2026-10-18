@@ -1,59 +1,55 @@
-from __future__ import annotations
-
 import argparse
-import sys
 from pathlib import Path
-from typing import Optional
 
-from debate_arena.config.loader import load_config
-from debate_arena.graph.workflow import DebateWorkflow
-from debate_arena.llm.ollama import OllamaChatFactory
-from debate_arena.prompts.repository import PromptRepository
-from debate_arena.services.presenter import ConsoleDebateObserver, ConsolePresenter
+from ollama import Client
 
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Autonomous CLI debate system")
-    parser.add_argument("-p", "--prompt", help="Tema o tesis del debate")
-    parser.add_argument("--config", default="config/settings.yaml", help="Ruta al fichero de configuración")
-    parser.add_argument("-f", "--file", help="Ruta opcional para guardar la transcripción final")
-    return parser
+from debate_arena.arena import run_debate
+from debate_arena.config import load_config
+from debate_arena.presenter import ConsolePresenter
 
 
-def resolve_config_path(config_argument: str) -> Path:
-    config_path = Path(config_argument)
-    if config_path.exists():
-        return config_path
-    package_root = Path(__file__).resolve().parents[2]
-    candidate = package_root / config_argument
-    if candidate.exists():
-        return candidate
-    raise FileNotFoundError(f"Configuration file not found at: {config_argument}")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="debate-cli",
+        description="Arena de debate autónomo con gemma4:12b-it-qat y juez probabilístico d1:latest.",
+    )
+    parser.add_argument(
+        "-p",
+        "--prompt",
+        required=True,
+        help="Tesis o tema central sobre el que debatirán los modelos.",
+    )
+    parser.add_argument(
+        "--config",
+        default="config/settings.yaml",
+        help="Ruta al archivo de configuración YAML (por defecto: config/settings.yaml).",
+    )
+    parser.add_argument(
+        "-f",
+        "--file",
+        default="",
+        help="Ruta opcional para guardar la transcripción y el veredicto en Markdown.",
+    )
+    return parser.parse_args()
 
 
-def main(argv: Optional[list[str]] = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        config = load_config(resolve_config_path(args.config))
-        topic = (args.prompt or "").strip()
-        if not topic:
-            raise RuntimeError("No debate topic provided. Use -p/--prompt.")
-        observer = ConsoleDebateObserver()
-        workflow = DebateWorkflow(
-            config=config,
-            prompt_repository=PromptRepository(config.prompts.directory),
-            model_factory=OllamaChatFactory(config),
-            observer=observer,
-        )
-        result = workflow.run(topic=topic)
-        ConsolePresenter().present(result=result, output_file=Path(args.file) if args.file else None, skip_transcript=True)
-        return 0
-    except Exception as exc:  # noqa: BLE001 - CLI entry point should surface the real error.
-        print(f"Fatal Error: {exc}", file=sys.stderr)
-        return 1
+def main() -> None:
+    args = parse_args()
+    config = load_config(Path(args.config))
+    client = Client(
+        host=config.ollama.base_url,
+        timeout=config.ollama.timeout_seconds,
+    )
+    presenter = ConsolePresenter()
+    result = run_debate(
+        topic=args.prompt.strip(),
+        config=config,
+        client=client,
+        presenter=presenter,
+    )
+    if args.file:
+        presenter.save_result(result, Path(args.file))
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

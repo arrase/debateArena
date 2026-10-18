@@ -1,61 +1,42 @@
 # Debate Arena
 
-CLI autónomo para hacer debatir a dos LLM sobre una tesis dada por el usuario. La reescritura actual usa **LangChain**, **LangGraph** y **Ollama** con una arquitectura modular, prompts externos y compactación preventiva de contexto.
+Sistema CLI autónomo que enfrenta a dos agentes de debate (`PRO` y `CON`) sobre cualquier tesis utilizando el SDK nativo de **Ollama** (`ollama.Client`), separando la generación argumentativa de la toma de decisiones probabilística.
 
-## Flujo central
+## Modelos y Roles
 
-1. `debater_a` toma la postura **a favor**.
-2. `debater_b` toma la postura **en contra**.
-3. Un guard de coherencia valida cada turno y fuerza una reescritura si un debatiente deriva hacia la postura rival.
-4. `referee` revisa cada ronda, detecta bucles, prohíbe líneas agotadas por debatiente y decide cuándo cerrar.
-5. `compactor` resume historial antes de saturar `num_ctx`.
-6. `referee` emite un veredicto final con ganador o empate.
+- **`gemma4:12b-it-qat` (`think=False`)**:
+  - **Debatientes (`PRO` / `CON`)**: Cada debatiente recibe el historial desde su propia perspectiva en primera persona (`assistant` para sus intervenciones previas y `user` para las de su oponente), evitando la confusión de identidad y el intercambio accidental de posturas.
+  - **Compactador de contexto**: Resume periódicamente las rondas antiguas en un resumen operativo conciso y extrae la lista acumulada de argumentos agotados mediante salidas estructuradas JSON (`format`).
+  - **Redactor del fallo**: Sintetiza en lenguaje natural la explicación final a partir del fallo cuantitativo e inamovible emitido por `d1:latest`.
+- **`d1:latest` (`client.systemone`)**:
+  - **Guardia de turno (`validate_turn`)**: Evalúa probabilísticamente (`noul`) si la intervención mantiene la postura asignada en primera persona y si repite argumentos agotados.
+  - **Árbitro de ronda (`evaluate_round`)**: Puntúa el rigor de `PRO` y `CON` (`score`), detecta concesiones explícitas (`choice`) y evalúa estancamiento o cierre temprano (`noul`).
+  - **Juez del veredicto (`issue_verdict`)**: Determina el ganador (`pro`, `con` o `draw`) y el factor decisivo mediante probabilidades calibradas (`choice`).
 
-## Arquitectura
+## Estructura del Proyecto
 
 ```text
+config/
+├── settings.yaml                  # Configuración de Ollama, modelos, contexto y umbrales d1
+└── prompts/
+    ├── debater_system.j2          # Identidad en primera persona, resumen y argumentos prohibidos
+    ├── opening_user.j2            # Mensaje user inicial o de continuación tras compactación
+    ├── compactor.j2               # Compactación estructurada de rondas previas
+    └── verdict_summary.j2         # Síntesis narrativa subordinada al fallo de d1
 src/debate_arena/
-├── config/        # Carga y validación tipada de settings.yaml
-├── domain/        # Modelos de dominio y resultados
-├── graph/         # Orquestación LangGraph
-├── llm/           # Factoría ChatOllama y contratos de modelos
-├── prompts/       # Repositorio Jinja para prompts externos
-└── services/      # Presupuesto de contexto, parsing y presentación
+├── models.py                      # Dataclasses inmutables de dominio
+├── config.py                      # Carga tipada de settings.yaml y entorno Jinja2
+├── context.py                     # Perspectiva assistant/user por debatiente y compactación
+├── judge.py                       # Evaluaciones probabilísticas con d1:latest y compactación
+├── arena.py                       # Bucle principal del debate
+├── presenter.py                   # Salida enriquecida con Rich y exportación a Markdown
+└── main.py                        # Punto de entrada CLI (debate-cli)
 ```
 
-## Configuración
-
-La configuración principal vive en `config/settings.yaml` y separa:
-
-- `runtime`: conexión con Ollama
-- `debate`: idioma, rondas y límites de respuesta
-- `prompt_repository`: directorio de prompts y prompt de apertura
-- `context_policy`: umbrales de compactación y buffer de contexto
-- `models`: configuración por rol, incluyendo `context_window`
-
-Todos los prompts viven en `config/prompts/`:
-
-- `debater.j2`
-- `opening_instruction.j2`
-- `referee_review.j2`
-- `referee_final.j2`
-- `turn_guard.j2`
-- `compactor.j2`
-
-## Uso
+## Instalación y Uso
 
 ```bash
-python3 -m pip install -e .
-debate-cli --config config/settings.yaml -p "La regulación de la IA debe ser global"
-debate-cli -p "La educación universitaria debe ser gratuita" -f salida.txt
-```
-
-## Gestión de contexto
-
-Cada llamada a Ollama registra `prompt_eval_count` y `eval_count` a través de `ChatOllama`. Esa telemetría, junto con una estimación conservadora del siguiente prompt, activa la compactación antes de acercarse al límite configurado de `context_window`.
-
-## Tests
-
-```bash
-python3 -m unittest discover -s tests
+.venv/bin/pip install -e .
+.venv/bin/debate-cli -p "La energía nuclear es imprescindible para la transición ecológica"
+.venv/bin/debate-cli -p "El teletrabajo debe ser un derecho laboral por defecto" -f debate.md
 ```
